@@ -55,6 +55,16 @@ body{display:flex;flex-direction:column}
 .routine-card h3{font-size:16px;font-weight:700;margin-bottom:4px}
 .routine-card p{font-size:12px;color:var(--text2)}
 .routine-card .tag{display:inline-block;background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;margin-top:8px}
+.routine-card .tag.kb{background:#9b59b6;color:#fff}
+.routine-card .tag.cali{background:#2ecc71;color:#000}
+.other-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.other-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;background:var(--bg3);border:1px solid var(--bg4);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.other-btn:active{transform:scale(.97);border-color:var(--gold)}
+.other-btn span{font-size:22px}
+.mode-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.mode-badge.kb{background:#9b59b6;color:#fff}
+.mode-badge.cali{background:#2ecc71;color:#000}
+.mode-badge.cardio{background:#95a5a6;color:#000}
 
 .exercise-block{background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px}
 .exercise-block .ex-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px}
@@ -219,6 +229,15 @@ body{display:flex;flex-direction:column}
       <div id="routineCards"></div>
     </div>
     <div class="card mt-12">
+      <div class="card-title">Otro entreno</div>
+      <div class="other-grid">
+        <button class="other-btn" onclick="App.workout.startFree('gym')"><span>&#127947;</span>Gimnasio libre</button>
+        <button class="other-btn" onclick="App.workout.chooseTemplate('kettlebell')"><span>&#128296;</span>Kettlebell</button>
+        <button class="other-btn" onclick="App.workout.chooseTemplate('calistenia')"><span>&#129336;</span>Calistenia</button>
+        <button class="other-btn" onclick="App.cardio.show()"><span>&#127939;</span>Cardio</button>
+      </div>
+    </div>
+    <div class="card mt-12">
       <div class="card-title">Últimos entrenos</div>
       <div id="lastWorkoutSummary"><p class="text-sm" style="color:var(--text3)">Sin datos aún</p></div>
     </div>
@@ -310,7 +329,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v2.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -369,6 +388,12 @@ const MUSCLE_GROUPS = {
   'Cardio': {name:'Cardio',min:0,max:0,color:'#95a5a6'},
 };
 
+const MODE_BADGE = {
+  kettlebell: '<span class="mode-badge kb">KB</span>',
+  calistenia: '<span class="mode-badge cali">CALI</span>',
+  cardio: '<span class="mode-badge cardio">CARDIO</span>',
+};
+
 let customVolumeTargets = null;
 
 const DEFAULT_EXERCISES = [
@@ -416,62 +441,183 @@ const DEFAULT_EXERCISES = [
   {id:'adductores',name:'Adductores',category:'Legs',isCompound:false},
   {id:'levantar_piernas',name:'Levantar Piernas',category:'Abs',isCompound:false},
   {id:'abdominales',name:'Abdominales',category:'Abs',isCompound:false},
+  {id:'face_pull',name:'Face Pull',category:'Back',isCompound:false},
+  // --- Kettlebell (equip:'kb') ---
+  {id:'kb_clean_press',name:'KB Clean & Press',category:'Shoulders',isCompound:true,equip:'kb'},
+  {id:'kb_push_press',name:'KB Push Press',category:'Shoulders',isCompound:true,equip:'kb'},
+  {id:'kb_see_saw_press',name:'KB See-Saw Press',category:'Shoulders',isCompound:false,equip:'kb'},
+  {id:'kb_half_kneel_press',name:'KB Press de Rodillas',category:'Shoulders',isCompound:false,equip:'kb'},
+  {id:'kb_front_squat',name:'KB Front Rack Squat',category:'Legs',isCompound:true,equip:'kb'},
+  {id:'kb_goblet_squat',name:'KB Goblet Squat',category:'Legs',isCompound:true,equip:'kb'},
+  {id:'kb_rdl',name:'KB Peso Muerto Rumano',category:'Legs',isCompound:true,equip:'kb'},
+  {id:'kb_swing',name:'KB Swing (2 manos)',category:'Legs',isCompound:true,equip:'kb'},
+  {id:'kb_swing_uni',name:'KB Swing (1 mano)',category:'Legs',isCompound:false,equip:'kb'},
+  {id:'kb_reverse_lunge',name:'KB Zancada Atrás',category:'Legs',isCompound:false,equip:'kb'},
+  {id:'kb_oh_lunge',name:'KB Zancada Overhead',category:'Legs',isCompound:false,equip:'kb'},
+  {id:'kb_renegade_row',name:'KB Renegade Row',category:'Back',isCompound:true,equip:'kb'},
+  {id:'kb_bent_row',name:'KB Remo Inclinado',category:'Back',isCompound:true,equip:'kb'},
+  {id:'kb_high_pull',name:'KB High Pull',category:'Back',isCompound:false,equip:'kb'},
+  {id:'kb_half_snatch',name:'KB Half Snatch',category:'Back',isCompound:false,equip:'kb'},
+  {id:'kb_tgu',name:'KB Turkish Get-Up',category:'Abs',isCompound:true,equip:'kb'},
+  {id:'kb_farmer',name:'KB Farmer Carry',category:'Abs',isCompound:false,equip:'kb'},
+  {id:'kb_calf',name:'KB Elevación Gemelos',category:'Legs',isCompound:false,equip:'kb'},
+  // --- Calistenia (equip:'cali') ---
+  {id:'cali_chinup',name:'Dominadas Supinas (Chin-up)',category:'Back',isCompound:true,equip:'cali'},
+  {id:'cali_dips',name:'Fondos en Paralelas',category:'Chest',isCompound:true,equip:'cali'},
+  {id:'cali_aus_row',name:'Remo Invertido (Australian)',category:'Back',isCompound:true,equip:'cali'},
+  {id:'cali_pike_pushup',name:'Pike Push-up',category:'Shoulders',isCompound:true,equip:'cali'},
+  {id:'cali_bw_squat',name:'Sentadilla Peso Corporal',category:'Legs',isCompound:true,equip:'cali'},
+  {id:'cali_lunge',name:'Zancadas',category:'Legs',isCompound:false,equip:'cali'},
+  {id:'cali_bulgarian',name:'Sentadilla Búlgara',category:'Legs',isCompound:true,equip:'cali'},
+  {id:'cali_glute_bridge',name:'Hip Thrust / Puente de Glúteo',category:'Legs',isCompound:false,equip:'cali'},
+  {id:'cali_pistol',name:'Pistol Squat',category:'Legs',isCompound:true,equip:'cali'},
+  {id:'cali_plank',name:'Plancha',category:'Abs',isCompound:false,equip:'cali'},
 ];
 
+// Rutina rediseñada (v3) con criterio de hipertrofia tipo Jeff Nippard:
+// compuesto pesado primero (fuerza), luego hipertrofia 8-12, aislados 12-15,
+// equilibrio empuje:tirón 1:1, hombro lateral + face pull para salud del manguito.
 const DEFAULT_ROUTINES = [
   {
-    id:'upper_a', name:'Upper A', subtitle:'Énfasis Pecho + Espalda Horizontal', type:'upper',
+    id:'upper_a', name:'Upper A', subtitle:'Pecho + Espalda horizontal', type:'upper', mode:'gym',
     exercises:[
-      {exerciseId:'press_banca',sets:4,repsMin:6,repsMax:8,weight:55},
-      {exerciseId:'remo_intermedio',sets:4,repsMin:6,repsMax:8,weight:52},
-      {exerciseId:'press_inclinado_multi',sets:3,repsMin:8,repsMax:10,weight:35},
-      {exerciseId:'remo_uni',sets:3,repsMin:10,repsMax:12,weight:25},
-      {exerciseId:'seated_fly',sets:3,repsMin:10,repsMax:12,weight:45},
-      {exerciseId:'rear_delt',sets:3,repsMin:12,repsMax:15,weight:32},
-      {exerciseId:'triceps_katana',sets:3,repsMin:10,repsMax:12,weight:27},
-      {exerciseId:'curl_manc',sets:2,repsMin:10,repsMax:12,weight:10},
+      {exerciseId:'press_banca',sets:4,repsMin:6,repsMax:8,weight:60},
+      {exerciseId:'remo_peq',sets:4,repsMin:8,repsMax:10,weight:50},
+      {exerciseId:'press_inclinado_maq',sets:3,repsMin:8,repsMax:12,weight:40},
+      {exerciseId:'jalon_ancho',sets:3,repsMin:10,repsMax:12,weight:45},
+      {exerciseId:'hombro_lat_polea',sets:4,repsMin:12,repsMax:15,weight:7},
+      {exerciseId:'face_pull',sets:3,repsMin:15,repsMax:20,weight:18},
+      {exerciseId:'triceps_katana',sets:3,repsMin:10,repsMax:12,weight:23},
+      {exerciseId:'curl_manc',sets:3,repsMin:10,repsMax:12,weight:12},
+      {exerciseId:'levantar_piernas',sets:3,repsMin:12,repsMax:15,weight:0},
+    ]
+  },
+  {
+    id:'lower_a', name:'Lower A', subtitle:'Cuádriceps dominante', type:'lower', mode:'gym',
+    exercises:[
+      {exerciseId:'sentadilla',sets:4,repsMin:6,repsMax:8,weight:70},
+      {exerciseId:'prensa_tumbado',sets:3,repsMin:10,repsMax:12,weight:100},
+      {exerciseId:'leg_ext',sets:3,repsMin:12,repsMax:15,weight:55},
+      {exerciseId:'leg_curl',sets:3,repsMin:10,repsMax:12,weight:50},
+      {exerciseId:'gemelos_prensa',sets:4,repsMin:12,repsMax:15,weight:97},
+      {exerciseId:'abductores',sets:3,repsMin:15,repsMax:20,weight:57},
       {exerciseId:'abdominales',sets:3,repsMin:12,repsMax:15,weight:0},
     ]
   },
   {
-    id:'lower_a', name:'Lower A', subtitle:'Énfasis Cuádriceps + Unilaterales', type:'lower',
-    exercises:[
-      {exerciseId:'sentadilla',sets:4,repsMin:6,repsMax:8,weight:70},
-      {exerciseId:'prensa_tumbado',sets:3,repsMin:10,repsMax:12,weight:100},
-      {exerciseId:'leg_ext_uni',sets:3,repsMin:10,repsMax:12,weight:25},
-      {exerciseId:'leg_curl_uni',sets:3,repsMin:10,repsMax:12,weight:20},
-      {exerciseId:'gemelos_prensa',sets:4,repsMin:12,repsMax:15,weight:97},
-      {exerciseId:'abductores',sets:3,repsMin:12,repsMax:15,weight:57},
-      {exerciseId:'levantar_piernas',sets:3,repsMin:10,repsMax:15,weight:0},
-    ]
-  },
-  {
-    id:'upper_b', name:'Upper B', subtitle:'Énfasis Espalda Vertical + Hombros', type:'upper',
+    id:'upper_b', name:'Upper B', subtitle:'Espalda vertical + Hombros', type:'upper', mode:'gym',
     exercises:[
       {exerciseId:'dominadas',sets:4,repsMin:6,repsMax:10,weight:0},
-      {exerciseId:'press_militar_maq',sets:4,repsMin:6,repsMax:8,weight:32},
-      {exerciseId:'jalon_supino',sets:3,repsMin:8,repsMax:10,weight:45},
+      {exerciseId:'press_militar_manc',sets:4,repsMin:6,repsMax:8,weight:16},
+      {exerciseId:'remo_intermedio',sets:3,repsMin:8,repsMax:10,weight:52},
       {exerciseId:'press_inclinado_multi',sets:3,repsMin:8,repsMax:10,weight:35},
-      {exerciseId:'hombro_lat_polea',sets:3,repsMin:12,repsMax:15,weight:7},
-      {exerciseId:'maq_press_declinado',sets:3,repsMin:10,repsMax:12,weight:40},
+      {exerciseId:'hombro_lat_polea',sets:4,repsMin:12,repsMax:15,weight:8},
       {exerciseId:'maquina_fondos',sets:3,repsMin:10,repsMax:12,weight:50},
       {exerciseId:'maq_predicador',sets:3,repsMin:10,repsMax:12,weight:23},
       {exerciseId:'levantar_piernas',sets:3,repsMin:12,repsMax:15,weight:0},
     ]
   },
   {
-    id:'lower_b', name:'Lower B', subtitle:'Énfasis Posterior + Unilaterales', type:'lower',
+    id:'lower_b', name:'Lower B', subtitle:'Femoral / cadena posterior', type:'lower', mode:'gym',
     exercises:[
-      {exerciseId:'peso_muerto',sets:4,repsMin:5,repsMax:6,weight:75},
+      {exerciseId:'peso_muerto',sets:4,repsMin:5,repsMax:6,weight:80},
       {exerciseId:'prensa_uni',sets:3,repsMin:10,repsMax:12,weight:65},
-      {exerciseId:'leg_curl',sets:3,repsMin:10,repsMax:12,weight:50},
-      {exerciseId:'leg_ext_uni',sets:3,repsMin:10,repsMax:12,weight:25},
-      {exerciseId:'soleo',sets:3,repsMin:12,repsMax:15,weight:40},
-      {exerciseId:'gemelos_prensa',sets:3,repsMin:12,repsMax:15,weight:97},
-      {exerciseId:'levantar_piernas',sets:3,repsMin:10,repsMax:15,weight:0},
+      {exerciseId:'leg_curl_uni',sets:3,repsMin:10,repsMax:12,weight:20},
+      {exerciseId:'leg_ext_uni',sets:3,repsMin:12,repsMax:15,weight:25},
+      {exerciseId:'soleo',sets:4,repsMin:12,repsMax:15,weight:40},
+      {exerciseId:'adductores',sets:3,repsMin:15,repsMax:20,weight:50},
+      {exerciseId:'abdominales',sets:3,repsMin:12,repsMax:15,weight:0},
     ]
   }
 ];
+
+// Plantillas Kettlebell (basadas en KBOMG Triple Strength / DBL KB Precision, Joe Daniels).
+// Pesos de doble KB de gimnasio (8-20kg), editables en cada sesión.
+const KB_ROUTINES = [
+  {
+    id:'kb_a', name:'Kettlebell A', subtitle:'Empuje · Clean & Press', type:'kb', mode:'kettlebell',
+    exercises:[
+      {exerciseId:'kb_clean_press',sets:4,repsMin:4,repsMax:6,weight:16},
+      {exerciseId:'kb_push_press',sets:3,repsMin:6,repsMax:8,weight:16},
+      {exerciseId:'kb_see_saw_press',sets:3,repsMin:10,repsMax:12,weight:12},
+      {exerciseId:'kb_reverse_lunge',sets:3,repsMin:8,repsMax:10,weight:16},
+      {exerciseId:'kb_swing',sets:4,repsMin:12,repsMax:15,weight:20},
+      {exerciseId:'kb_renegade_row',sets:3,repsMin:8,repsMax:10,weight:16},
+    ]
+  },
+  {
+    id:'kb_b', name:'Kettlebell B', subtitle:'Pierna · Squat', type:'kb', mode:'kettlebell',
+    exercises:[
+      {exerciseId:'kb_front_squat',sets:4,repsMin:6,repsMax:8,weight:16},
+      {exerciseId:'kb_goblet_squat',sets:3,repsMin:10,repsMax:12,weight:20},
+      {exerciseId:'kb_rdl',sets:4,repsMin:8,repsMax:10,weight:20},
+      {exerciseId:'kb_swing_uni',sets:3,repsMin:10,repsMax:12,weight:16},
+      {exerciseId:'kb_oh_lunge',sets:3,repsMin:6,repsMax:8,weight:12},
+      {exerciseId:'kb_calf',sets:3,repsMin:15,repsMax:20,weight:20},
+    ]
+  },
+  {
+    id:'kb_c', name:'Kettlebell C', subtitle:'Tirón · Estabilidad', type:'kb', mode:'kettlebell',
+    exercises:[
+      {exerciseId:'kb_renegade_row',sets:4,repsMin:8,repsMax:10,weight:16},
+      {exerciseId:'kb_bent_row',sets:4,repsMin:8,repsMax:10,weight:16},
+      {exerciseId:'kb_high_pull',sets:3,repsMin:8,repsMax:10,weight:16},
+      {exerciseId:'kb_half_snatch',sets:3,repsMin:5,repsMax:6,weight:12},
+      {exerciseId:'kb_tgu',sets:3,repsMin:2,repsMax:3,weight:12},
+      {exerciseId:'kb_farmer',sets:3,repsMin:30,repsMax:40,weight:20},
+    ]
+  }
+];
+
+// Plantillas Calistenia (parque: barra dominadas + paralelas + suelo).
+// Peso 0 = peso corporal. Se autocompletan reps/peso desde tu último registro.
+const CALI_ROUTINES = [
+  {
+    id:'cali_a', name:'Calistenia A', subtitle:'Tren superior · Empuje/Tirón', type:'cali', mode:'calistenia',
+    exercises:[
+      {exerciseId:'dominadas',sets:4,repsMin:6,repsMax:10,weight:0},
+      {exerciseId:'cali_dips',sets:4,repsMin:8,repsMax:12,weight:0},
+      {exerciseId:'cali_chinup',sets:3,repsMin:6,repsMax:10,weight:0},
+      {exerciseId:'flexiones',sets:3,repsMin:12,repsMax:20,weight:0},
+      {exerciseId:'cali_aus_row',sets:3,repsMin:10,repsMax:15,weight:0},
+      {exerciseId:'cali_pike_pushup',sets:3,repsMin:6,repsMax:10,weight:0},
+    ]
+  },
+  {
+    id:'cali_b', name:'Calistenia B', subtitle:'Pierna + Core', type:'cali', mode:'calistenia',
+    exercises:[
+      {exerciseId:'cali_bw_squat',sets:4,repsMin:15,repsMax:25,weight:0},
+      {exerciseId:'cali_bulgarian',sets:3,repsMin:8,repsMax:12,weight:0},
+      {exerciseId:'cali_lunge',sets:3,repsMin:10,repsMax:12,weight:0},
+      {exerciseId:'cali_glute_bridge',sets:3,repsMin:12,repsMax:15,weight:0},
+      {exerciseId:'levantar_piernas',sets:3,repsMin:10,repsMax:15,weight:0},
+      {exerciseId:'cali_plank',sets:3,repsMin:30,repsMax:60,weight:0},
+    ]
+  }
+];
+
+// Plan de readaptación tras parón (congresos/exámenes/viajes). Apunta a 4 días
+// pero asume 3 reales la mayoría de semanas. Empieza el próximo lunes.
+function buildAdaptationPlan() {
+  const now = new Date();
+  const day = now.getDay();
+  const daysUntilMon = day === 1 ? 0 : (8 - day) % 7 || 7;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + daysUntilMon);
+  const startDate = mon.toISOString().split('T')[0];
+  const wk = (rids) => rids.map((id, i) => ({routineId: id, label: 'Día ' + (i + 1), completed: false}));
+  return {
+    startDate,
+    weeks: [
+      {label:'Semana 1 · Readaptación', note:'Vuelta tras el parón. RPE 6-7, deja 3-4 reps en recámara. Baja ~10-15% los pesos de la rutina. Prioriza técnica.', workouts: wk(['upper_a','lower_a','upper_b'])},
+      {label:'Semana 2 · Readaptación', note:'RPE 7, deja 2-3 reps. Sube un poco respecto a la semana 1. Si puedes, mete el 4º día (Lower B).', workouts: wk(['upper_a','lower_a','upper_b','lower_b'])},
+      {label:'Semana 3 · Carga', note:'Volumen completo, RPE 7-8. Ya con los pesos objetivo de la rutina.', workouts: wk(['upper_a','lower_a','upper_b','lower_b'])},
+      {label:'Semana 4 · Carga', note:'RPE 8. Intenta superar reps o peso de la semana 3 (sobrecarga progresiva).', workouts: wk(['upper_a','lower_a','upper_b','lower_b'])},
+      {label:'Semana 5 · Intensificación', note:'RPE 8-9 en compuestos. Cuida el manguito en press. Última semana fuerte antes de descargar.', workouts: wk(['upper_a','lower_a','upper_b','lower_b'])},
+      {label:'Semana 6 · Descarga (deload)', note:'Baja volumen ~40%: 2 series por ejercicio, RPE 6. Recupera para el siguiente bloque.', workouts: wk(['upper_a','lower_a','upper_b'])},
+    ]
+  };
+}
 
 // ============================================================
 // DATABASE
@@ -838,7 +984,8 @@ App.home = {
   },
 
   async renderRoutines() {
-    const routines = await DB.getAll('routines');
+    const all = await DB.getAll('routines');
+    const routines = all.filter(r => !r.mode || r.mode === 'gym');
     const order = ['upper_a','lower_a','upper_b','lower_b'];
     routines.sort((a,b) => (order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id)) - (order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id)));
     $('routineCards').innerHTML = routines.map(r => `
@@ -857,12 +1004,20 @@ App.home = {
       const last3 = workouts.slice(-3).reverse();
       let summaryHtml = '';
       last3.forEach(w => {
-        const totalVol = w.exercises.reduce((sum, ex) =>
-          sum + ex.sets.filter(s => s.done).reduce((s2, set) => s2 + (set.weight || 0) * (set.reps || 0), 0), 0);
+        const badge = MODE_BADGE[w.mode] || '';
+        let detail;
+        if (w.mode === 'cardio') {
+          const c = w.cardio || {};
+          detail = [c.distance ? c.distance + ' km' : '', c.duration ? c.duration + ' min' : '', c.maxRpm ? c.maxRpm + ' rpm' : ''].filter(Boolean).join(' · ');
+        } else {
+          const totalVol = w.exercises.reduce((sum, ex) =>
+            sum + ex.sets.filter(s => s.done).reduce((s2, set) => s2 + (set.weight || 0) * (set.reps || 0), 0), 0);
+          detail = `${w.exercises.length} ejercicios${totalVol > 0 ? ' · ' + Math.round(totalVol).toLocaleString() + ' kg vol.' : ''}`;
+        }
         summaryHtml += `
           <div class="last-workout-entry">
-            <div class="flex-between"><span class="text-sm fw-700">${w.routineName}</span><span class="text-sm" style="color:var(--text2)">${formatDate(w.date)}</span></div>
-            <div class="text-sm" style="color:var(--text2)">${w.exercises.length} ejercicios · ${Math.round(totalVol).toLocaleString()} kg vol.</div>
+            <div class="flex-between"><span class="text-sm fw-700">${badge}${w.routineName}</span><span class="text-sm" style="color:var(--text2)">${formatDate(w.date)}</span></div>
+            <div class="text-sm" style="color:var(--text2)">${detail}</div>
           </div>
         `;
       });
@@ -923,23 +1078,34 @@ App.workout = {
     const exercises = await DB.getAll('exercises');
     const exMap = {};
     exercises.forEach(e => exMap[e.id] = e);
+    const mode = routine.mode || 'gym';
+
+    // Autocompleta desde tu último registro (sobre todo útil en calistenia/KB)
+    const lastPerf = await this.getLastPerformance();
+    const usePrefill = (mode === 'kettlebell' || mode === 'calistenia');
 
     this.active = {
       routineId: routine.id,
       routineName: routine.name,
+      mode,
       date: todayStr(),
-      exercises: routine.exercises.map(re => ({
-        exerciseId: re.exerciseId,
-        name: exMap[re.exerciseId]?.name || re.exerciseId,
-        category: exMap[re.exerciseId]?.category || 'Chest',
-        isCompound: exMap[re.exerciseId]?.isCompound || false,
-        targetSets: re.sets,
-        targetRepsMin: re.repsMin,
-        targetRepsMax: re.repsMax,
-        targetWeight: re.weight,
-        comment: '',
-        sets: Array.from({length: re.sets}, () => ({weight: re.weight, reps: re.repsMin, done: false}))
-      }))
+      exercises: routine.exercises.map(re => {
+        const lp = lastPerf[re.exerciseId];
+        const startW = (usePrefill && lp) ? lp.weight : re.weight;
+        const startR = (usePrefill && lp) ? lp.reps : re.repsMin;
+        return {
+          exerciseId: re.exerciseId,
+          name: exMap[re.exerciseId]?.name || re.exerciseId,
+          category: exMap[re.exerciseId]?.category || 'Chest',
+          isCompound: exMap[re.exerciseId]?.isCompound || false,
+          targetSets: re.sets,
+          targetRepsMin: re.repsMin,
+          targetRepsMax: re.repsMax,
+          targetWeight: re.weight,
+          comment: '',
+          sets: Array.from({length: re.sets}, () => ({weight: startW, reps: startR, done: false}))
+        };
+      })
     };
     this.startTime = Date.now();
     this.timerInterval = setInterval(() => this.updateTimer(), 1000);
@@ -954,6 +1120,80 @@ App.workout = {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+  },
+
+  // Devuelve {exerciseId: {weight, reps}} con la mejor serie del último entreno en que se hizo
+  async getLastPerformance() {
+    const workouts = await DB.getAll('workouts');
+    const out = {};
+    for (let i = workouts.length - 1; i >= 0; i--) {
+      const w = workouts[i];
+      if (!w.exercises) continue;
+      w.exercises.forEach(ex => {
+        if (out[ex.exerciseId]) return;
+        const done = ex.sets.filter(s => s.done);
+        if (done.length) {
+          const top = done.reduce((a, b) => ((b.weight || 0) >= (a.weight || 0) ? b : a), done[0]);
+          out[ex.exerciseId] = {weight: top.weight || 0, reps: top.reps || 0};
+        }
+      });
+    }
+    return out;
+  },
+
+  _enterWorkoutScreen() {
+    this.startTime = Date.now();
+    this.timerInterval = setInterval(() => this.updateTimer(), 1000);
+    $('workoutTitle').textContent = this.active.routineName;
+    this.render();
+    this.autoSave();
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $('screenWorkout').classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  },
+
+  // Sesión libre (vacía) para gimnasio / KB / calistenia: empieza y abre el selector de ejercicios
+  startFree(mode) {
+    if (this.active) {
+      if (!confirm(`Ya tienes "${this.active.routineName}" en curso. ¿Cancelar ese entreno y empezar uno nuevo?`)) return;
+      clearInterval(this.timerInterval);
+      App.timer.stop();
+    }
+    App.modal.forceClose();
+    const names = {gym:'Gimnasio libre', kettlebell:'Kettlebell libre', calistenia:'Calistenia libre'};
+    this.active = {
+      routineId: 'free_' + mode,
+      routineName: names[mode] || 'Entreno libre',
+      mode,
+      date: todayStr(),
+      exercises: []
+    };
+    this._enterWorkoutScreen();
+    this.addExercise();
+  },
+
+  // Muestra las plantillas disponibles de un modo (kettlebell o calistenia)
+  async chooseTemplate(mode) {
+    const all = await DB.getAll('routines');
+    const list = all.filter(r => r.mode === mode);
+    const title = mode === 'kettlebell' ? 'Kettlebell' : 'Calistenia';
+    let html = `<h2>${title}</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige una plantilla o empieza una sesión libre.</p>`;
+    list.forEach(r => {
+      html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.workout.startTemplate('${r.id}')">
+        <span class="eli-name">${r.name}<br><span style="font-size:11px;color:var(--text3)">${r.subtitle || ''}</span></span>
+        <span class="eli-cat">${r.exercises.length} ej.</span>
+      </div>`;
+    });
+    html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.workout.startFree('${mode}')">
+      <span class="eli-name" style="color:var(--gold)">+ Sesión libre (sin plantilla)</span>
+    </div>`;
+    App.modal.open(html);
+  },
+
+  startTemplate(id) {
+    App.modal.forceClose();
+    this.start(id);
   },
 
   updateTimer() {
@@ -1133,17 +1373,20 @@ App.workout = {
 
   async finish() {
     if (!this.active) return;
+    const anyDone = this.active.exercises.some(ex => ex.sets.some(s => s.done));
+    if (!anyDone && !confirm('No has marcado ninguna serie como completada. ¿Guardar igualmente?')) return;
     clearInterval(this.timerInterval);
     App.timer.stop();
     const workoutId = uid();
     const workout = {
       ...this.active,
+      mode: this.active.mode || 'gym',
       id: workoutId,
       duration: Math.floor((Date.now() - this.startTime) / 1000),
     };
     await DB.put('workouts', workout);
 
-    await this.updatePlan(this.active.routineId, workoutId);
+    if ((this.active.mode || 'gym') === 'gym') await this.updatePlan(this.active.routineId, workoutId);
 
     this.active = null;
     localStorage.removeItem('gym_autosave');
@@ -1173,6 +1416,59 @@ App.workout = {
     this.active = null;
     localStorage.removeItem('gym_autosave');
     App.nav('screenHome');
+  }
+};
+
+// ============================================================
+// CARDIO
+// ============================================================
+App.cardio = {
+  show() {
+    App.modal.open(`
+      <h2>Registrar cardio</h2>
+      <div class="input-group"><label>Tipo</label>
+        <select class="select" id="cardioType">
+          <option>Cinta / Carrera</option>
+          <option>Spinning</option>
+          <option>Bici</option>
+          <option>Elíptica</option>
+          <option>Remo</option>
+          <option>Caminar</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="input-group"><label>Distancia (km)</label>
+        <input type="number" inputmode="decimal" step="0.1" class="input" id="cardioDist" placeholder="5.0"></div>
+      <div class="input-group"><label>Duración (min)</label>
+        <input type="number" inputmode="decimal" step="1" class="input" id="cardioDur" placeholder="30"></div>
+      <div class="input-group"><label>RPM máx (opcional)</label>
+        <input type="number" inputmode="numeric" class="input" id="cardioRpm" placeholder="ej. 95"></div>
+      <textarea class="input" id="cardioNote" rows="2" placeholder="Notas (opcional)..." style="resize:vertical"></textarea>
+      <button class="btn btn-primary mt-12" onclick="App.cardio.save()">Guardar cardio</button>
+    `);
+  },
+
+  async save() {
+    const type = $('cardioType').value;
+    const distance = parseFloat($('cardioDist').value) || 0;
+    const duration = parseFloat($('cardioDur').value) || 0;
+    const maxRpm = parseFloat($('cardioRpm').value) || 0;
+    const note = $('cardioNote').value.trim();
+    if (!duration && !distance) { toast('Añade al menos duración o distancia'); return; }
+    const workout = {
+      id: uid(),
+      mode: 'cardio',
+      routineId: 'cardio',
+      routineName: 'Cardio · ' + type,
+      date: todayStr(),
+      duration: Math.round(duration * 60),
+      cardio: {type, distance, duration, maxRpm, note},
+      exercises: []
+    };
+    await DB.put('workouts', workout);
+    App.modal.forceClose();
+    toast('Cardio guardado!');
+    App.home.render();
   }
 };
 
@@ -1544,6 +1840,19 @@ App.history = {
     }
     const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
     $('historyList').innerHTML = sorted.map(w => {
+      const badge = MODE_BADGE[w.mode] || '';
+      if (w.mode === 'cardio') {
+        const c = w.cardio || {};
+        const sub = [c.distance ? c.distance + ' km' : '', c.duration ? c.duration + ' min' : '', c.maxRpm ? c.maxRpm + ' rpm' : ''].filter(Boolean).join(' · ');
+        return `
+        <div class="history-item" onclick="App.history.detail('${w.id}')">
+          <div>
+            <div class="hi-date">${formatDate(w.date)}</div>
+            <div class="hi-name">${badge}${w.routineName}</div>
+          </div>
+          <div class="hi-vol">${sub}</div>
+        </div>`;
+      }
       const vol = w.exercises.reduce((s, ex) =>
         s + ex.sets.filter(s2 => s2.done).reduce((s3, set) => s3 + (set.weight || 0) * (set.reps || 0), 0), 0);
       const setsDone = w.exercises.reduce((s, ex) => s + ex.sets.filter(s2 => s2.done).length, 0);
@@ -1551,9 +1860,9 @@ App.history = {
         <div class="history-item" onclick="App.history.detail('${w.id}')">
           <div>
             <div class="hi-date">${formatDate(w.date)}</div>
-            <div class="hi-name">${w.routineName} · ${setsDone} series</div>
+            <div class="hi-name">${badge}${w.routineName} · ${setsDone} series</div>
           </div>
-          <div class="hi-vol">${Math.round(vol).toLocaleString()} kg</div>
+          <div class="hi-vol">${vol > 0 ? Math.round(vol).toLocaleString() + ' kg' : setsDone + ' series'}</div>
         </div>
       `;
     }).join('');
@@ -1563,6 +1872,17 @@ App.history = {
     const w = await DB.get('workouts', id);
     if (!w) return;
     let html = `<h2>${w.routineName} — ${formatDate(w.date)}</h2>`;
+    if (w.mode === 'cardio') {
+      const c = w.cardio || {};
+      if (c.distance) html += `<div class="text-sm" style="color:var(--text2)">Distancia: ${c.distance} km</div>`;
+      if (c.duration) html += `<div class="text-sm" style="color:var(--text2)">Duración: ${c.duration} min</div>`;
+      if (c.distance && c.duration) html += `<div class="text-sm" style="color:var(--text2)">Ritmo: ${(c.duration / c.distance).toFixed(1)} min/km</div>`;
+      if (c.maxRpm) html += `<div class="text-sm" style="color:var(--text2)">RPM máx: ${c.maxRpm}</div>`;
+      if (c.note) html += `<div class="text-sm mt-12" style="color:var(--gold);font-style:italic">${c.note}</div>`;
+      html += `<button class="btn btn-danger mt-12" onclick="App.history.deleteWorkout('${w.id}')">Eliminar</button>`;
+      App.modal.open(html);
+      return;
+    }
     if (w.duration) {
       const m = Math.floor(w.duration / 60);
       html += `<p class="text-sm mb-12" style="color:var(--text2)">Duración: ${m} min</p>`;
@@ -1759,9 +2079,17 @@ App.claude = {
     summary += `Fecha: ${new Date().toLocaleDateString('es-ES')}\n`;
     summary += `Total entrenos: ${workouts.length}\n\n`;
 
-    summary += '--- ÚLTIMOS 8 ENTRENOS ---\n';
-    last8.forEach(w => {
-      summary += `\n[${w.date}] ${w.routineName}\n`;
+    const modeTag = m => m === 'kettlebell' ? '[KB] ' : m === 'calistenia' ? '[CALI] ' : m === 'cardio' ? '[CARDIO] ' : '';
+
+    summary += '--- ÚLTIMOS 10 ENTRENOS ---\n';
+    workouts.slice(-10).forEach(w => {
+      summary += `\n[${w.date}] ${modeTag(w.mode)}${w.routineName}\n`;
+      if (w.mode === 'cardio') {
+        const c = w.cardio || {};
+        summary += `  ${[c.distance ? c.distance + ' km' : '', c.duration ? c.duration + ' min' : '', c.maxRpm ? c.maxRpm + ' rpm máx' : ''].filter(Boolean).join(', ')}\n`;
+        if (c.note) summary += `    Nota: ${c.note}\n`;
+        return;
+      }
       w.exercises.forEach(ex => {
         const doneSets = ex.sets.filter(s => s.done);
         if (doneSets.length > 0) {
@@ -1771,9 +2099,40 @@ App.claude = {
       });
     });
 
-    summary += '\n--- RUTINAS ACTUALES ---\n';
+    // Volumen semanal medio por músculo (últimas 4 semanas)
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const volByCat = {};
+    workouts.filter(w => w.date >= cutoffStr).forEach(w => {
+      (w.exercises || []).forEach(ex => {
+        const done = ex.sets.filter(s => s.done).length;
+        if (done) volByCat[ex.category] = (volByCat[ex.category] || 0) + done;
+      });
+    });
+    summary += '\n--- VOLUMEN SEMANAL MEDIO (últimas 4 sem, series/sem) ---\n';
+    Object.keys(MUSCLE_GROUPS).filter(k => k !== 'Cardio').forEach(cat => {
+      const t = getVolumeTarget(cat);
+      summary += `  ${MUSCLE_GROUPS[cat].name}: ~${Math.round((volByCat[cat] || 0) / 4)}/sem (objetivo ${t.min}-${t.max})\n`;
+    });
+
+    // Resumen de cardio reciente
+    const cardios = workouts.filter(w => w.mode === 'cardio').slice(-6);
+    if (cardios.length) {
+      summary += '\n--- CARDIO RECIENTE ---\n';
+      cardios.forEach(w => {
+        const c = w.cardio || {};
+        summary += `  [${w.date}] ${c.type}: ${[c.distance ? c.distance + 'km' : '', c.duration ? c.duration + 'min' : '', c.maxRpm ? c.maxRpm + 'rpm' : ''].filter(Boolean).join(', ')}\n`;
+      });
+    }
+
+    // Conteo por modo de entreno
+    const modeCounts = workouts.reduce((acc, w) => { const m = w.mode || 'gym'; acc[m] = (acc[m] || 0) + 1; return acc; }, {});
+    summary += '\n--- ENTRENOS POR TIPO ---\n';
+    summary += `  Gimnasio: ${modeCounts.gym || 0} · Kettlebell: ${modeCounts.kettlebell || 0} · Calistenia: ${modeCounts.calistenia || 0} · Cardio: ${modeCounts.cardio || 0}\n`;
+
+    summary += '\n--- RUTINAS Y PLANTILLAS ---\n';
     routines.forEach(r => {
-      summary += `\n[${r.name}] (id: ${r.id})\n`;
+      summary += `\n[${r.name}] (id: ${r.id}, modo: ${r.mode || 'gym'})\n`;
       r.exercises.forEach(re => {
         const ex = exMap[re.exerciseId];
         summary += `  ${ex?.name || re.exerciseId}: ${re.sets}×${re.repsMin}-${re.repsMax} @ ${re.weight}kg\n`;
@@ -1831,9 +2190,10 @@ App.claude = {
     summary += '{\n';
     summary += '  "routines": [{"id":"upper_a","exercises":[{"exerciseId":"press_banca","sets":4,"repsMin":6,"repsMax":8,"weight":60}]}],\n';
     summary += '  "goals": [{"id":"press_banca","targets":[{"months":1,"weight":60},{"months":3,"weight":65}]}],\n';
-    summary += '  "plan": {"startDate":"2026-05-19","weeks":[{"label":"Semana 1","note":"Fuerza","workouts":[{"routineId":"upper_a","label":"Día 1"},{"routineId":"lower_a","label":"Día 2"}]}]},\n';
-    summary += '  "volumeTargets": {"Chest":{"min":12,"max":18},"Back":{"min":12,"max":20}}\n';
+    summary += '  "plan": {"startDate":"2026-05-18","weeks":[{"label":"Semana 1","note":"Fuerza","workouts":[{"routineId":"upper_a","label":"Día 1"},{"routineId":"lower_a","label":"Día 2"}]}]},\n';
+    summary += '  "volumeTargets": {"Chest":{"min":12,"max":18},"Back":{"min":12,"max":20},"Legs":{"min":14,"max":22}}\n';
     summary += '}\n```\n';
+    summary += 'Puedes editar rutinas de gimnasio (upper_a/lower_a/upper_b/lower_b) y plantillas KB (kb_a/kb_b/kb_c) o calistenia (cali_a/cali_b). Usa solo exerciseId de la lista de ejercicios disponibles.\n';
 
     try {
       await navigator.clipboard.writeText(summary);
@@ -2026,11 +2386,32 @@ function handleDeepLink() {
 // ============================================================
 // SEED DEFAULTS
 // ============================================================
+const ALL_ROUTINES = [...DEFAULT_ROUTINES, ...KB_ROUTINES, ...CALI_ROUTINES];
+
 async function seedDefaults() {
   const existing = await DB.getAll('exercises');
   if (existing.length === 0) await DB.putAll('exercises', DEFAULT_EXERCISES);
   const existingRoutines = await DB.getAll('routines');
-  if (existingRoutines.length === 0) await DB.putAll('routines', DEFAULT_ROUTINES);
+  if (existingRoutines.length === 0) await DB.putAll('routines', ALL_ROUTINES);
+}
+
+// Migración a v3: ejercicios nuevos, rutina científica, plantillas KB/calistenia y plan de adaptación.
+// No borra ejercicios ni rutinas que el usuario haya creado; solo añade/actualiza lo de la app.
+async function runMigrations() {
+  const verRec = await DB.get('settings', 'schemaVersion');
+  const ver = verRec ? verRec.value : 0;
+  if (ver < 3) {
+    const existing = await DB.getAll('exercises');
+    const ids = new Set(existing.map(e => e.id));
+    const toAdd = DEFAULT_EXERCISES.filter(e => !ids.has(e.id));
+    if (toAdd.length) await DB.putAll('exercises', toAdd);
+    // Actualiza rutinas de la app (upper/lower v3) y añade plantillas KB/calistenia
+    await DB.putAll('routines', ALL_ROUTINES);
+    // Instala el plan de readaptación si no hay ninguno activo
+    const planData = await DB.get('settings', 'trainingPlan');
+    if (!planData) await DB.put('settings', {key:'trainingPlan', value: buildAdaptationPlan()});
+    await DB.put('settings', {key:'schemaVersion', value:3});
+  }
 }
 
 // ============================================================
@@ -2068,6 +2449,7 @@ async function init() {
   await DB.init();
   await seedDefaults();
   await importHistory();
+  await runMigrations();
   await App.settings.load();
 
   const restored = App.workout.restoreAutoSave();
