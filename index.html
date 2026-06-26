@@ -66,6 +66,10 @@ body{display:flex;flex-direction:column}
 .mode-badge.cali{background:#2ecc71;color:#000}
 .mode-badge.cardio{background:#95a5a6;color:#000}
 .ex-desc{font-size:11px;color:var(--text2);line-height:1.4;font-style:italic;padding:0 2px 6px}
+.kb-prog-ex{padding:8px 0;border-bottom:1px solid var(--bg3)}
+.kb-prog-ex:last-child{border-bottom:none}
+.kb-prog-name{font-size:13px;font-weight:600;color:var(--text)}
+.kb-prog-scheme{font-size:12px;font-weight:700;color:var(--gold);white-space:nowrap;margin-left:8px}
 
 .exercise-block{background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px}
 .exercise-block .ex-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px}
@@ -259,6 +263,16 @@ body{display:flex;flex-direction:column}
     </div>
   </div>
 
+  <div class="screen" id="screenKbProgram">
+    <div class="flex-between mb-12">
+      <h2 style="font-size:16px;font-weight:700">Programa KB</h2>
+      <button class="btn btn-sm btn-secondary" onclick="App.nav('screenHome')" style="width:auto">&#8592; Volver</button>
+    </div>
+    <p class="text-sm" id="kbProgramHeader" style="color:var(--text2)"></p>
+    <div class="tabs mt-12 mb-8" id="kbWeekTabs" style="flex-wrap:wrap"></div>
+    <div id="kbProgramContent"></div>
+  </div>
+
   <div class="screen" id="screenDashboard">
     <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Dashboard</h2>
     <div class="stat-grid" id="statGrid"></div>
@@ -330,7 +344,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.1<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.2<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -594,6 +608,155 @@ const CALI_ROUTINES = [
   }
 ];
 
+// Programa completo Triple Strength Plan (KBOMG · Joe Daniels), 6 semanas, 3 días/sem.
+// Solo lectura: muchas prescripciones son EMOM/complejos/tiempo que no encajan en series×reps.
+// Alterna bloque de PRESS ESTRICTO (sem 1,3,5) y bloque PUSH PRESS/EMOM (sem 2,4,6), subiendo volumen.
+const KB_CARS = 'Shoulder CARs (rotaciones de hombro) 5 min';
+const KB_HIP = 'Movilidad de cadera 5 min';
+const KB_PROGRAM = {
+  name: 'Triple Strength Plan',
+  source: 'KBOMG · Joe Daniels',
+  cooldown: 'Enfriamiento: estiramiento + foam roll + respiración tumbado boca abajo, 5 min.',
+  cardioNote: 'Cardio opcional (LISS, intensidad baja-media) en días de descanso o después de entrenar si buscas perder grasa. Caminar va genial.',
+  weeks: [
+    { label:'Semana 1', focus:'Press estricto · base y técnica', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Press Estricto (doble)', s:'4×3-5'},
+        {n:'Zancada Atrás + Thruster (1 brazo)', s:'3×3 por lado'},
+        {n:'Snatch / Arrancada (1 brazo)', s:'3×8 por lado', note:'Puede ser una cargada si prefieres'},
+        {n:'Cargada + Press a 1 brazo (escalera dropset)', s:'3 series', note:'3 reps con la pesada + 2 con la ligera, por lado'},
+        {n:'Paseo en Rack', s:'Acumula 1:30 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'4×2-3', note:'2 delante / 3 atrás (goblet y luego peso muerto)'},
+        {n:'Zancada Atrás Goblet (pesada)', s:'3×4-5 por lado'},
+        {n:'Swing a 2 manos', s:'4×15'},
+        {n:'Bruce Complex', s:'4 circuitos de 3'},
+        {n:'Arrastre en Plancha (toalla)', s:'2×10s por lado', note:'Opcional'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (estático)', s:'4×6 alternando'},
+        {n:'Remo a 1 brazo (escalera pesada)', s:'3 series', note:'3/2/1 por lado = una serie'},
+        {n:'Kentucky Burpee', s:'3×4'},
+        {n:'Swing Alterno (cambio de mano)', s:'4×10-16'},
+      ]},
+    ]},
+    { label:'Semana 2', focus:'Push Press + EMOM · técnica bajo fatiga', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Push Press (excéntrica LENTA)', s:'Outer Limits: 1 rep cada 30s · 6 min', note:'Baja en 2s. Usa impulso de pierna para subir.'},
+        {n:'Press de Rodillas (Half Kneeling Clean & Press)', s:'3×3 por lado'},
+        {n:'See-Saw Press (press alterno balancín)', s:'4×16 alternando'},
+        {n:'Complejo Clean + Half Snatch + Push Press', s:'3 circuitos por lado · 2-3 series'},
+        {n:'Paseo medio Rack / medio Farmer', s:'Acumula 2 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'EMOM · 1 delante / 2 atrás · 6 min'},
+        {n:'Swing a 1 brazo', s:'2×20', note:'Alterna mano cada 5 reps'},
+        {n:'KickStarter Leg Complex', s:'2×(3-2-3-3)', note:'3-5 sentadilla overhead, 2-5 rack, 3-5 back squat, 3-5 peso muerto suitcase'},
+        {n:'Combo Somersault Squat + Dead Stop Swing', s:'8 + 5 · 2-3 series'},
+        {n:'Turkish Get-Up', s:'1 rep cada 30s · 4 min', note:'Peso ligero recomendado'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (con rotación de torso)', s:'3×6 alternando'},
+        {n:'Half Pullover to Press (doble)', s:'3×6'},
+        {n:'Press de Rodillas a Windmill', s:'3×4 por lado'},
+        {n:'Swing a Half Snatch (1 brazo)', s:'2 min', note:'Alterna lado cada 30s · 2 series'},
+        {n:'Farmer Carry', s:'Acumula 2 min'},
+      ]},
+    ]},
+    { label:'Semana 3', focus:'Press estricto · más volumen', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Press Estricto (doble)', s:'4×5-7'},
+        {n:'Zancada Atrás + Thruster (1 brazo)', s:'4×4 por lado'},
+        {n:'Snatch / Arrancada (1 brazo)', s:'4×10-12 por lado'},
+        {n:'Cargada + Press a 1 brazo (escalera)', s:'3 series', note:'3/2/1 por lado'},
+        {n:'Paseo en Rack', s:'Acumula 2 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'4 series', note:'3 delante / 5 atrás'},
+        {n:'Zancada Atrás Goblet (pesada)', s:'4×5 por lado'},
+        {n:'Swing a 2 manos', s:'4×20'},
+        {n:'Bruce Complex', s:'3×5 circuitos'},
+        {n:'Arrastre en Plancha (toalla)', s:'3×10s por lado', note:'Opcional'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (estático)', s:'4×8 alternando'},
+        {n:'Remo a 1 brazo (escalera)', s:'3 series', note:'4/3/2 por lado'},
+        {n:'Kentucky Burpee', s:'4×4'},
+        {n:'Swing Alterno (cambio de mano)', s:'4×14'},
+      ]},
+    ]},
+    { label:'Semana 4', focus:'Push Press + EMOM · más tiempo', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Push Press (excéntrica lenta)', s:'Outer Limits: 1 rep cada 30s · 8 min'},
+        {n:'Press de Rodillas', s:'3×5 por lado'},
+        {n:'See-Saw Press', s:'3×10 alternando'},
+        {n:'Complejo Clean + Half Snatch + Push Press', s:'4-5 circuitos por lado · 2-3 series'},
+        {n:'Paseo medio Rack / medio Farmer', s:'Acumula 2:30 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'EMOM · 1 delante / 2 atrás · 9 min'},
+        {n:'Swing a 1 brazo', s:'2 series de 30 reps', note:'Alterna mano cada 5 reps'},
+        {n:'KickStarter Leg Complex', s:'2-3 series'},
+        {n:'Combo Somersault Squat + Dead Stop Swing', s:'8 + 8 · 3 series'},
+        {n:'Turkish Get-Up', s:'1 rep cada 30s · 6 min'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (con rotación)', s:'3×8 alternando'},
+        {n:'Half Pullover to Press', s:'3×8'},
+        {n:'Press de Rodillas a Windmill', s:'4×4 por lado'},
+        {n:'Swing a Half Snatch', s:'3 min', note:'Alterna cada 30s'},
+        {n:'Farmer Carry', s:'Acumula 3 min'},
+      ]},
+    ]},
+    { label:'Semana 5', focus:'Press estricto · pico de volumen', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Press Estricto (doble)', s:'4×6-8'},
+        {n:'Zancada Atrás + Thruster (1 brazo)', s:'4×5 por lado'},
+        {n:'Snatch / Arrancada (1 brazo)', s:'5×12 por lado'},
+        {n:'Cargada + Press a 1 brazo (escalera)', s:'2 series', note:'4/3/2 por lado'},
+        {n:'Paseo en Rack', s:'Acumula 3 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'4 series', note:'3 delante / 7 atrás'},
+        {n:'Zancada Atrás Goblet (pesada)', s:'4×5-7 por lado'},
+        {n:'Swing a 2 manos', s:'4×25'},
+        {n:'Bruce Complex', s:'4×5 circuitos'},
+        {n:'Arrastre en Plancha (toalla)', s:'4×10s por lado', note:'Opcional'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (estático)', s:'4×10 alternando'},
+        {n:'Remo a 1 brazo (escalera)', s:'4 series', note:'4/3/2/1 por lado'},
+        {n:'Kentucky Burpee', s:'5×4'},
+        {n:'Swing Alterno (cambio de mano)', s:'5×16'},
+      ]},
+    ]},
+    { label:'Semana 6', focus:'Push Press + EMOM · pico', workouts:[
+      {d:'A · Clean & Press', warm:KB_CARS, ex:[
+        {n:'Cargada + Push Press (excéntrica lenta)', s:'Outer Limits: 1 rep cada 30s · 10 min'},
+        {n:'Press de Rodillas', s:'4×4 por lado'},
+        {n:'See-Saw Press', s:'4×10 alternando'},
+        {n:'Complejo Clean + Half Snatch + Push Press', s:'6-7 circuitos por lado · 3 series'},
+        {n:'Paseo medio Rack / medio Farmer', s:'Acumula 3 min'},
+      ]},
+      {d:'B · Sentadilla', warm:KB_HIP, ex:[
+        {n:'Sentadilla Transformer', s:'EMOM · 2 delante / 2 atrás · 9 min'},
+        {n:'Swing a 1 brazo', s:'4 series de 20 reps'},
+        {n:'KickStarter Leg Complex', s:'3 series'},
+        {n:'Combo Somersault Squat + Dead Stop Swing', s:'10 + 10 · 3 series'},
+        {n:'Turkish Get-Up', s:'1 rep cada 30s · 8 min'},
+      ]},
+      {d:'C · Renegade Row', warm:KB_CARS, ex:[
+        {n:'Renegade Row (con rotación)', s:'3×10 alternando'},
+        {n:'Half Pullover to Press', s:'4×7'},
+        {n:'Press de Rodillas a Windmill', s:'3×5-6 por lado'},
+        {n:'Swing a Half Snatch', s:'3 min'},
+        {n:'Farmer Carry', s:'Acumula 3-4 min'},
+      ]},
+    ]},
+  ]
+};
+
 // Plan de readaptación tras parón (congresos/exámenes/viajes). Apunta a 4 días
 // pero asume 3 reales la mayoría de semanas. Empieza el próximo lunes.
 function buildAdaptationPlan() {
@@ -788,6 +951,7 @@ App.nav = function(screenId) {
   if (screenId === 'screenHistory') App.history.render();
   if (screenId === 'screenHome') App.home.render();
   if (screenId === 'screenGoals') App.goals.render();
+  if (screenId === 'screenKbProgram') App.kbProgram.render();
   history.pushState({screen: screenId}, '', '');
 };
 
@@ -1153,7 +1317,7 @@ App.workout = {
   },
 
   // Sesión libre (vacía) para gimnasio / KB / calistenia: empieza y abre el selector de ejercicios
-  startFree(mode) {
+  startFree(mode, name) {
     if (this.active) {
       if (!confirm(`Ya tienes "${this.active.routineName}" en curso. ¿Cancelar ese entreno y empezar uno nuevo?`)) return;
       clearInterval(this.timerInterval);
@@ -1163,7 +1327,7 @@ App.workout = {
     const names = {gym:'Gimnasio libre', kettlebell:'Kettlebell libre', calistenia:'Calistenia libre'};
     this.active = {
       routineId: 'free_' + mode,
-      routineName: names[mode] || 'Entreno libre',
+      routineName: name || names[mode] || 'Entreno libre',
       mode,
       date: todayStr(),
       exercises: []
@@ -1178,6 +1342,11 @@ App.workout = {
     const list = all.filter(r => r.mode === mode);
     const title = mode === 'kettlebell' ? 'Kettlebell' : 'Calistenia';
     let html = `<h2>${title}</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige una plantilla o empieza una sesión libre.</p>`;
+    if (mode === 'kettlebell') {
+      html += `<div class="ex-list-item" style="cursor:pointer;border:1px solid var(--gold)" onclick="App.kbProgram.open()">
+        <span class="eli-name" style="color:var(--gold)">&#128203; Ver programa completo (Triple Strength, 6 semanas)</span>
+      </div>`;
+    }
     list.forEach(r => {
       html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.workout.startTemplate('${r.id}')">
         <span class="eli-name">${r.name}<br><span style="font-size:11px;color:var(--text3)">${r.subtitle || ''}</span></span>
@@ -1419,6 +1588,56 @@ App.workout = {
     this.active = null;
     localStorage.removeItem('gym_autosave');
     App.nav('screenHome');
+  }
+};
+
+// ============================================================
+// PROGRAMA KB (solo lectura, Triple Strength Plan)
+// ============================================================
+App.kbProgram = {
+  week: 0,
+  open() {
+    this.week = 0;
+    App.modal.forceClose();
+    App.nav('screenKbProgram');
+  },
+  selectWeek(i, btn) {
+    this.week = i;
+    document.querySelectorAll('#kbWeekTabs .tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    this.renderContent();
+  },
+  render() {
+    $('kbProgramHeader').innerHTML = `${KB_PROGRAM.name} · ${KB_PROGRAM.source}<br>6 semanas · 3 días/semana (A/B/C). Alterna press estricto y push press/EMOM, subiendo volumen.`;
+    $('kbWeekTabs').innerHTML = KB_PROGRAM.weeks.map((w, i) =>
+      `<button class="tab ${i === this.week ? 'active' : ''}" onclick="App.kbProgram.selectWeek(${i},this)">Sem ${i + 1}</button>`
+    ).join('');
+    this.renderContent();
+  },
+  renderContent() {
+    const w = KB_PROGRAM.weeks[this.week];
+    let html = `<div class="card" style="border-color:var(--gold)"><div class="card-title" style="margin-bottom:4px">${w.label}</div><p class="text-sm" style="color:var(--text2)">${w.focus}</p></div>`;
+    w.workouts.forEach((wo, wi) => {
+      html += `<div class="card">
+        <div class="flex-between mb-8">
+          <div class="card-title" style="margin-bottom:0">${wo.d}</div>
+          <button class="btn btn-sm btn-secondary" style="width:auto" onclick="App.kbProgram.startDay(${this.week},${wi})">Registrar</button>
+        </div>
+        <p class="text-sm mb-12" style="color:var(--text3)">Calienta: ${wo.warm}</p>`;
+      wo.ex.forEach((e, i) => {
+        html += `<div class="kb-prog-ex">
+          <div class="flex-between"><span class="kb-prog-name">${i + 1}. ${e.n}</span><span class="kb-prog-scheme">${e.s}</span></div>
+          ${e.note ? `<div class="ex-desc" style="padding-top:2px">${e.note}</div>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    html += `<div class="card"><p class="text-sm" style="color:var(--text2)">${KB_PROGRAM.cardioNote}</p><p class="text-sm mt-8" style="color:var(--text3)">${KB_PROGRAM.cooldown}</p></div>`;
+    $('kbProgramContent').innerHTML = html;
+  },
+  startDay(wi, woi) {
+    const wo = KB_PROGRAM.weeks[wi].workouts[woi];
+    App.workout.startFree('kettlebell', `KB Sem ${wi + 1} · ${wo.d}`);
   }
 };
 
