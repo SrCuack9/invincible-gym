@@ -65,6 +65,7 @@ body{display:flex;flex-direction:column}
 .mode-badge.kb{background:#9b59b6;color:#fff}
 .mode-badge.cali{background:#2ecc71;color:#000}
 .mode-badge.cardio{background:#95a5a6;color:#000}
+.ex-desc{font-size:11px;color:var(--text2);line-height:1.4;font-style:italic;padding:0 2px 6px}
 
 .exercise-block{background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px}
 .exercise-block .ex-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:6px}
@@ -329,7 +330,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.1<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -442,25 +443,24 @@ const DEFAULT_EXERCISES = [
   {id:'levantar_piernas',name:'Levantar Piernas',category:'Abs',isCompound:false},
   {id:'abdominales',name:'Abdominales',category:'Abs',isCompound:false},
   {id:'face_pull',name:'Face Pull',category:'Back',isCompound:false},
-  // --- Kettlebell (equip:'kb') ---
-  {id:'kb_clean_press',name:'KB Clean & Press',category:'Shoulders',isCompound:true,equip:'kb'},
-  {id:'kb_push_press',name:'KB Push Press',category:'Shoulders',isCompound:true,equip:'kb'},
-  {id:'kb_see_saw_press',name:'KB See-Saw Press',category:'Shoulders',isCompound:false,equip:'kb'},
-  {id:'kb_half_kneel_press',name:'KB Press de Rodillas',category:'Shoulders',isCompound:false,equip:'kb'},
-  {id:'kb_front_squat',name:'KB Front Rack Squat',category:'Legs',isCompound:true,equip:'kb'},
-  {id:'kb_goblet_squat',name:'KB Goblet Squat',category:'Legs',isCompound:true,equip:'kb'},
-  {id:'kb_rdl',name:'KB Peso Muerto Rumano',category:'Legs',isCompound:true,equip:'kb'},
-  {id:'kb_swing',name:'KB Swing (2 manos)',category:'Legs',isCompound:true,equip:'kb'},
-  {id:'kb_swing_uni',name:'KB Swing (1 mano)',category:'Legs',isCompound:false,equip:'kb'},
-  {id:'kb_reverse_lunge',name:'KB Zancada Atrás',category:'Legs',isCompound:false,equip:'kb'},
-  {id:'kb_oh_lunge',name:'KB Zancada Overhead',category:'Legs',isCompound:false,equip:'kb'},
-  {id:'kb_renegade_row',name:'KB Renegade Row',category:'Back',isCompound:true,equip:'kb'},
-  {id:'kb_bent_row',name:'KB Remo Inclinado',category:'Back',isCompound:true,equip:'kb'},
-  {id:'kb_high_pull',name:'KB High Pull',category:'Back',isCompound:false,equip:'kb'},
-  {id:'kb_half_snatch',name:'KB Half Snatch',category:'Back',isCompound:false,equip:'kb'},
-  {id:'kb_tgu',name:'KB Turkish Get-Up',category:'Abs',isCompound:true,equip:'kb'},
-  {id:'kb_farmer',name:'KB Farmer Carry',category:'Abs',isCompound:false,equip:'kb'},
-  {id:'kb_calf',name:'KB Elevación Gemelos',category:'Legs',isCompound:false,equip:'kb'},
+  // --- Kettlebell: ejercicios EXACTOS del Triple Strength Plan (KBOMG, Joe Daniels) ---
+  // Workout A · Clean & Press
+  {id:'kb_clean_press',name:'Cargada + Press Estricto (doble)',category:'Shoulders',isCompound:true,equip:'kb',desc:'Sube las dos pesas del suelo al hombro (cargada) y empújalas sobre la cabeza SIN impulso de piernas. 4x3-5.'},
+  {id:'kb_lunge_thruster',name:'Zancada Atrás + Thruster (1 brazo)',category:'Shoulders',isCompound:true,equip:'kb',desc:'Da un paso atrás bajando la rodilla; al subir, empuja la pesa de un brazo por encima de la cabeza. Reps por lado.'},
+  {id:'kb_snatch',name:'Snatch / Arrancada (1 brazo)',category:'Shoulders',isCompound:true,equip:'kb',desc:'Desde un balanceo entre las piernas, lleva la pesa de golpe sobre la cabeza en un solo movimiento. Puede sustituirse por cargada. Reps por lado.'},
+  {id:'kb_clean_press_ladder',name:'Cargada + Press a 1 brazo (escalera dropset)',category:'Shoulders',isCompound:true,equip:'kb',desc:'Cargada y press a un brazo bajando peso en escalera (p. ej. 3 con la pesada, 2 con la ligera). 3 reps + 2 reps por lado.'},
+  {id:'kb_rack_carry',name:'Paseo en Rack',category:'Abs',isCompound:false,equip:'kb',desc:'Camina sujetando las pesas en los hombros (posición rack) con el core firme. Acumula ~90 seg en total. Anota segundos.'},
+  // Workout B · Squat
+  {id:'kb_transformer_squat',name:'Sentadilla Transformer',category:'Legs',isCompound:true,equip:'kb',desc:'Combina sentadilla goblet/frontal con peso muerto alternando la posición de las pesas (p. ej. 2 delante / 3 atras).'},
+  {id:'kb_reverse_lunge',name:'Zancada Atrás Goblet (pesada)',category:'Legs',isCompound:false,equip:'kb',desc:'Paso atrás bajando la rodilla, sujetando una pesa pesada contra el pecho (goblet). Reps por lado.'},
+  {id:'kb_swing',name:'Swing a 2 manos',category:'Legs',isCompound:true,equip:'kb',desc:'Balanceo de cadera con una pesa a dos manos; la sube el empuje de glúteo y cadera, NO el brazo.'},
+  {id:'kb_bruce_complex',name:'Bruce Complex',category:'Legs',isCompound:true,equip:'kb',desc:'Complejo encadenado de movimientos (mira el video del programa). Puede hacerse como swing alto. 4 circuitos de 3.'},
+  {id:'kb_plank_drag',name:'Arrastre en Plancha (sobre toalla)',category:'Abs',isCompound:false,equip:'kb',desc:'En plancha, arrastra la pesa de lado a lado por debajo del torso sin mover la cadera. Opcional. Reps por lado.'},
+  // Workout C · Renegade Row / estabilidad
+  {id:'kb_renegade_row',name:'Renegade Row (remo en plancha)',category:'Back',isCompound:true,equip:'kb',desc:'En plancha apoyado sobre las pesas, rema una hacia la cadera sin rotar el cuerpo. Reps alternando lados.'},
+  {id:'kb_row_ladder',name:'Remo a 1 brazo (escalera pesada)',category:'Back',isCompound:true,equip:'kb',desc:'Remo pesado a un brazo en escalera de reps: 3 por lado, luego 2, luego 1 = una serie.'},
+  {id:'kb_ky_burpee',name:'Kentucky Burpee',category:'Shoulders',isCompound:true,equip:'kb',desc:'Burpee con flexión sobre las pesas y, al subir, cargada y press por encima de la cabeza.'},
+  {id:'kb_swing_alt',name:'Swing Alterno (cambio de mano)',category:'Legs',isCompound:false,equip:'kb',desc:'Swing a una mano cambiando la pesa de mano en el punto alto del balanceo.'},
   // --- Calistenia (equip:'cali') ---
   {id:'cali_chinup',name:'Dominadas Supinas (Chin-up)',category:'Back',isCompound:true,equip:'cali'},
   {id:'cali_dips',name:'Fondos en Paralelas',category:'Chest',isCompound:true,equip:'cali'},
@@ -533,38 +533,36 @@ const DEFAULT_ROUTINES = [
 
 // Plantillas Kettlebell (basadas en KBOMG Triple Strength / DBL KB Precision, Joe Daniels).
 // Pesos de doble KB de gimnasio (8-20kg), editables en cada sesión.
+// Plantillas KB = Workout A/B/C del Triple Strength Plan, tal cual (esquema base semana 1).
+// Reps "por lado" donde el ejercicio es unilateral (ver descripción de cada ejercicio).
 const KB_ROUTINES = [
   {
-    id:'kb_a', name:'Kettlebell A', subtitle:'Empuje · Clean & Press', type:'kb', mode:'kettlebell',
+    id:'kb_a', name:'Kettlebell A · Clean & Press', subtitle:'Empuje · calienta con Shoulder CARs', type:'kb', mode:'kettlebell',
     exercises:[
-      {exerciseId:'kb_clean_press',sets:4,repsMin:4,repsMax:6,weight:16},
-      {exerciseId:'kb_push_press',sets:3,repsMin:6,repsMax:8,weight:16},
-      {exerciseId:'kb_see_saw_press',sets:3,repsMin:10,repsMax:12,weight:12},
-      {exerciseId:'kb_reverse_lunge',sets:3,repsMin:8,repsMax:10,weight:16},
-      {exerciseId:'kb_swing',sets:4,repsMin:12,repsMax:15,weight:20},
-      {exerciseId:'kb_renegade_row',sets:3,repsMin:8,repsMax:10,weight:16},
+      {exerciseId:'kb_clean_press',sets:4,repsMin:3,repsMax:5,weight:16},
+      {exerciseId:'kb_lunge_thruster',sets:3,repsMin:3,repsMax:3,weight:12},
+      {exerciseId:'kb_snatch',sets:3,repsMin:8,repsMax:8,weight:12},
+      {exerciseId:'kb_clean_press_ladder',sets:3,repsMin:5,repsMax:5,weight:16},
+      {exerciseId:'kb_rack_carry',sets:3,repsMin:30,repsMax:30,weight:16},
     ]
   },
   {
-    id:'kb_b', name:'Kettlebell B', subtitle:'Pierna · Squat', type:'kb', mode:'kettlebell',
+    id:'kb_b', name:'Kettlebell B · Sentadilla', subtitle:'Pierna · calienta con movilidad de cadera', type:'kb', mode:'kettlebell',
     exercises:[
-      {exerciseId:'kb_front_squat',sets:4,repsMin:6,repsMax:8,weight:16},
-      {exerciseId:'kb_goblet_squat',sets:3,repsMin:10,repsMax:12,weight:20},
-      {exerciseId:'kb_rdl',sets:4,repsMin:8,repsMax:10,weight:20},
-      {exerciseId:'kb_swing_uni',sets:3,repsMin:10,repsMax:12,weight:16},
-      {exerciseId:'kb_oh_lunge',sets:3,repsMin:6,repsMax:8,weight:12},
-      {exerciseId:'kb_calf',sets:3,repsMin:15,repsMax:20,weight:20},
+      {exerciseId:'kb_transformer_squat',sets:4,repsMin:2,repsMax:3,weight:12},
+      {exerciseId:'kb_reverse_lunge',sets:3,repsMin:4,repsMax:5,weight:16},
+      {exerciseId:'kb_swing',sets:4,repsMin:15,repsMax:15,weight:16},
+      {exerciseId:'kb_bruce_complex',sets:4,repsMin:3,repsMax:3,weight:12},
+      {exerciseId:'kb_plank_drag',sets:2,repsMin:10,repsMax:10,weight:12},
     ]
   },
   {
-    id:'kb_c', name:'Kettlebell C', subtitle:'Tirón · Estabilidad', type:'kb', mode:'kettlebell',
+    id:'kb_c', name:'Kettlebell C · Renegade Row', subtitle:'Tirón / estabilidad · calienta con Shoulder CARs', type:'kb', mode:'kettlebell',
     exercises:[
-      {exerciseId:'kb_renegade_row',sets:4,repsMin:8,repsMax:10,weight:16},
-      {exerciseId:'kb_bent_row',sets:4,repsMin:8,repsMax:10,weight:16},
-      {exerciseId:'kb_high_pull',sets:3,repsMin:8,repsMax:10,weight:16},
-      {exerciseId:'kb_half_snatch',sets:3,repsMin:5,repsMax:6,weight:12},
-      {exerciseId:'kb_tgu',sets:3,repsMin:2,repsMax:3,weight:12},
-      {exerciseId:'kb_farmer',sets:3,repsMin:30,repsMax:40,weight:20},
+      {exerciseId:'kb_renegade_row',sets:4,repsMin:6,repsMax:6,weight:16},
+      {exerciseId:'kb_row_ladder',sets:3,repsMin:6,repsMax:6,weight:16},
+      {exerciseId:'kb_ky_burpee',sets:3,repsMin:4,repsMax:4,weight:12},
+      {exerciseId:'kb_swing_alt',sets:4,repsMin:12,repsMax:16,weight:12},
     ]
   }
 ];
@@ -1098,6 +1096,7 @@ App.workout = {
           name: exMap[re.exerciseId]?.name || re.exerciseId,
           category: exMap[re.exerciseId]?.category || 'Chest',
           isCompound: exMap[re.exerciseId]?.isCompound || false,
+          desc: exMap[re.exerciseId]?.desc || '',
           targetSets: re.sets,
           targetRepsMin: re.repsMin,
           targetRepsMax: re.repsMax,
@@ -1237,6 +1236,7 @@ App.workout = {
               <button onclick="App.workout.removeExercise(${ei})">&#10005;</button>
             </div>
           </div>
+          ${ex.desc ? `<div class="ex-desc">${ex.desc}</div>` : ''}
           <div class="set-header"><span>#</span><span>PESO (kg)</span><span>REPS</span><span></span><span></span></div>
           ${setsHtml}
           <textarea class="ex-comment" rows="1" placeholder="Notas para tu entrenador..."
@@ -1350,25 +1350,28 @@ App.workout = {
       const mg = MUSCLE_GROUPS[cat] || {name: cat};
       html += `<p class="text-sm fw-700 mb-8 mt-12" style="color:var(--gold)">${mg.name}</p>`;
       grouped[cat].forEach(e => {
-        html += `<div class="ex-list-item" onclick="App.workout.insertExercise('${e.id}','${e.name.replace(/'/g,"\\'")}','${e.category}',${e.isCompound})" style="cursor:pointer">
+        html += `<div class="ex-list-item" onclick="App.workout.insertExercise('${e.id}')" style="cursor:pointer;display:block">
           <span class="eli-name">${e.name}</span>
+          ${e.desc ? `<div class="ex-desc" style="margin-top:4px">${e.desc}</div>` : ''}
         </div>`;
       });
     });
     App.modal.open(html);
   },
 
-  insertExercise(id, name, category, isCompound) {
+  async insertExercise(id) {
     App.modal.forceClose();
+    const e = await DB.get('exercises', id);
+    if (!e) return;
     this.active.exercises.push({
-      exerciseId: id, name, category, isCompound,
+      exerciseId: e.id, name: e.name, category: e.category, isCompound: e.isCompound, desc: e.desc || '',
       targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetWeight: 0,
       comment: '',
       sets: [{weight: 0, reps: 8, done: false}, {weight: 0, reps: 8, done: false}, {weight: 0, reps: 8, done: false}]
     });
     this.autoSave();
     this.render();
-    toast(`${name} añadido`);
+    toast(`${e.name} añadido`);
   },
 
   async finish() {
@@ -2411,6 +2414,18 @@ async function runMigrations() {
     const planData = await DB.get('settings', 'trainingPlan');
     if (!planData) await DB.put('settings', {key:'trainingPlan', value: buildAdaptationPlan()});
     await DB.put('settings', {key:'schemaVersion', value:3});
+  }
+  if (ver < 4) {
+    // KB del Triple Strength Plan con nombres claros + descripción.
+    // Quita los ejercicios KB antiguos (simplificados) que ya no se usan.
+    const validIds = new Set(DEFAULT_EXERCISES.map(e => e.id));
+    const existing = await DB.getAll('exercises');
+    for (const e of existing) {
+      if (e.equip === 'kb' && !validIds.has(e.id)) await DB.del('exercises', e.id);
+    }
+    await DB.putAll('exercises', DEFAULT_EXERCISES); // upsert: añade KB nuevos + descripciones
+    await DB.putAll('routines', KB_ROUTINES);        // reescribe kb_a/kb_b/kb_c según el PDF
+    await DB.put('settings', {key:'schemaVersion', value:4});
   }
 }
 
