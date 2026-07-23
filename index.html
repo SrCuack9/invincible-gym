@@ -328,6 +328,7 @@ body{display:flex;flex-direction:column}
     <div class="card">
       <div class="card-title">Datos</div>
       <button class="btn btn-secondary mb-8" onclick="App.data.exportJSON()">Exportar datos (JSON)</button>
+      <button class="btn btn-secondary mb-8" onclick="App.data.showRestore()">Restaurar backup (JSON)</button>
       <button class="btn btn-secondary mb-8" onclick="App.data.showImportCSV()">Importar CSV de FitNotes</button>
       <button class="btn btn-danger" onclick="App.data.confirmReset()">Borrar todos los datos</button>
     </div>
@@ -757,7 +758,7 @@ const KB_PROGRAM = {
   ]
 };
 
-// Plan de readaptación tras parón (congresos/exámenes/viajes). Apunta a 4 días
+// Plan de readaptación tras un parón de entrenamiento. Apunta a 4 días
 // pero asume 3 reales la mayoría de semanas. Empieza el próximo lunes.
 function buildAdaptationPlan() {
   const now = new Date();
@@ -2509,6 +2510,55 @@ App.data = {
     toast('Datos exportados');
   },
 
+  showRestore() {
+    App.modal.open(`
+      <h2>Restaurar backup</h2>
+      <p class="text-sm mb-12" style="color:var(--text2)">Selecciona un archivo JSON exportado desde esta app. Se añadirán los entrenos que falten (no se borra nada de lo que ya tienes).</p>
+      <input type="file" accept=".json,application/json" id="restoreFileInput" class="input" onchange="App.data.processRestore(this.files[0])">
+    `);
+  },
+
+  async processRestore(file) {
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data.workouts && !data.exercises && !data.routines) {
+        toast('Ese archivo no parece un backup válido');
+        return;
+      }
+      let added = 0;
+      // Ejercicios y rutinas: añade solo los que falten (no pisa lo actual)
+      if (data.exercises) {
+        const have = new Set((await DB.getAll('exercises')).map(e => e.id));
+        const missing = data.exercises.filter(e => !have.has(e.id));
+        if (missing.length) await DB.putAll('exercises', missing);
+      }
+      if (data.routines) {
+        const have = new Set((await DB.getAll('routines')).map(r => r.id));
+        const missing = data.routines.filter(r => !have.has(r.id));
+        if (missing.length) await DB.putAll('routines', missing);
+      }
+      // Entrenos: añade solo los que no estén ya (por id)
+      if (data.workouts) {
+        const have = new Set((await DB.getAll('workouts')).map(w => w.id));
+        const missing = data.workouts.filter(w => !have.has(w.id));
+        if (missing.length) await DB.putAll('workouts', missing);
+        added = missing.length;
+      }
+      if (data.goals) for (const g of data.goals) await DB.put('goals', g);
+      if (data.plan) await DB.put('settings', {key:'trainingPlan', value: data.plan});
+      if (data.volumeTargets) {
+        customVolumeTargets = data.volumeTargets;
+        await DB.put('settings', {key:'volumeTargets', value: data.volumeTargets});
+      }
+      App.modal.forceClose();
+      toast(`Backup restaurado: ${added} entrenos añadidos`);
+      App.home.render();
+    } catch (e) {
+      toast('Error al leer el backup');
+    }
+  },
+
   showImportCSV() {
     App.modal.open(`
       <h2>Importar CSV de FitNotes</h2>
@@ -2705,7 +2755,9 @@ async function init() {
 
 init();
 </script>
-<script src="history.js"></script>
+<!-- history.js (registro personal) NO se publica: queda solo en local.
+     Tus entrenos viven en el IndexedDB del navegador. Para restaurarlos en otro
+     dispositivo usa Ajustes > Restaurar backup (JSON), o Importar CSV de FitNotes. -->
 <script>if(typeof HISTORY_DATA!=='undefined')importHistory().then(()=>App.home.render())</script>
 </body>
 </html>
