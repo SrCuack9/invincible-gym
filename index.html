@@ -309,10 +309,12 @@ body{display:flex;flex-direction:column}
     <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Ajustes</h2>
 
     <div class="card">
-      <div class="card-title">Análisis con Claude</div>
-      <p class="text-sm mb-12" style="color:var(--text2)">Genera un resumen para pegar en Claude y recibir feedback personalizado.</p>
-      <button class="btn btn-primary mb-8" onclick="App.claude.generateSummary()">Copiar Resumen para Claude</button>
-      <button class="btn btn-secondary" onclick="App.claude.showImport()">Importar cambios de Claude</button>
+      <div class="card-title">Tu entrenador (Claude)</div>
+      <p class="text-sm mb-12" style="color:var(--text2)">La <b>primera vez</b> (o al reiniciar el entrenador): copia el volcado completo y pégalo en un chat nuevo junto al prompt del entrenador.</p>
+      <button class="btn btn-primary mb-8" onclick="App.claude.generateFullExport()">Exportar TODO para el entrenador</button>
+      <p class="text-sm mb-8 mt-8" style="color:var(--text2)">Para el <b>seguimiento semanal</b>, una vez ya te conoce:</p>
+      <button class="btn btn-secondary mb-8" onclick="App.claude.generateSummary()">Copiar resumen semanal</button>
+      <button class="btn btn-secondary" onclick="App.claude.showImport()">Importar cambios del entrenador</button>
     </div>
 
     <div class="card">
@@ -345,7 +347,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.2<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.3<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -2418,12 +2420,111 @@ App.claude = {
     summary += '}\n```\n';
     summary += 'Puedes editar rutinas de gimnasio (upper_a/lower_a/upper_b/lower_b) y plantillas KB (kb_a/kb_b/kb_c) o calistenia (cali_a/cali_b). Usa solo exerciseId de la lista de ejercicios disponibles.\n';
 
+    await this._copyOrShow(summary, 'Resumen para Claude');
+  },
+
+  async _copyOrShow(text, title) {
     try {
-      await navigator.clipboard.writeText(summary);
-      toast('Resumen copiado al portapapeles!');
+      await navigator.clipboard.writeText(text);
+      toast('Copiado al portapapeles!');
     } catch {
-      App.modal.open(`<h2>Resumen para Claude</h2><textarea style="width:100%;height:300px;background:var(--bg3);color:var(--text);border:1px solid var(--bg4);border-radius:8px;padding:12px;font-size:12px;font-family:monospace" readonly>${summary}</textarea><p class="text-sm mt-12" style="color:var(--text2)">Copia este texto y pégalo en Claude</p>`);
+      App.modal.open(`<h2>${title}</h2><textarea style="width:100%;height:340px;background:var(--bg3);color:var(--text);border:1px solid var(--bg4);border-radius:8px;padding:12px;font-size:11px;font-family:monospace" readonly onclick="this.select()">${text.replace(/</g,'&lt;')}</textarea><p class="text-sm mt-12" style="color:var(--text2)">Toca el texto para seleccionarlo, copia y pégalo en Claude</p>`);
     }
+  },
+
+  // Volcado COMPLETO para el primer mensaje al entrenador: glosario + TODO el historial + evolución
+  async generateFullExport() {
+    const workouts = await DB.getAll('workouts');
+    const routines = await DB.getAll('routines');
+    const exercises = await DB.getAll('exercises');
+    const goals = await DB.getAll('goals');
+    const planData = await DB.get('settings', 'trainingPlan');
+    const exMap = {}; exercises.forEach(e => exMap[e.id] = e);
+    const sorted = [...workouts].sort((a, b) => a.date.localeCompare(b.date));
+    const modeTag = m => m === 'kettlebell' ? '[KB] ' : m === 'calistenia' ? '[CALI] ' : m === 'cardio' ? '[CARDIO] ' : '';
+
+    let s = '=== INVINCIBLE GYM — VOLCADO COMPLETO PARA EL ENTRENADOR ===\n';
+    s += `Fecha de export: ${new Date().toLocaleDateString('es-ES')}\n`;
+    s += `Total entrenos registrados: ${workouts.length}\n`;
+    if (sorted.length) s += `Rango de fechas: ${sorted[0].date} → ${sorted[sorted.length - 1].date}\n`;
+    s += '\n>> Este es el VOLCADO INICIAL de reinicio. NO me des todavía plan ni objetivos.\n';
+    s += '>> Primero: entiende cada ejercicio con el GLOSARIO, léete TODO el historial y la EVOLUCIÓN,\n';
+    s += '>> luego hazme el CUESTIONARIO de datos personales, y solo después analiza y propón. Sé sincero.\n';
+
+    // 1) Glosario: qué trabaja cada ejercicio (clave para que el Coach lo entienda)
+    s += '\n===== GLOSARIO DE EJERCICIOS (qué músculo trabaja cada uno) =====\n';
+    const byCat = {};
+    exercises.forEach(e => { (byCat[e.category] = byCat[e.category] || []).push(e); });
+    Object.keys(byCat).sort().forEach(cat => {
+      const mg = MUSCLE_GROUPS[cat] || {name: cat};
+      s += `\n[${mg.name}]\n`;
+      byCat[cat].sort((a, b) => a.name.localeCompare(b.name)).forEach(e => {
+        s += `  ${e.name} — ${e.isCompound ? 'compuesto' : 'accesorio'}${e.equip ? ' · ' + e.equip : ''}${e.desc ? ' · ' + e.desc : ''}\n`;
+      });
+    });
+
+    // 2) Historial COMPLETO cronológico (todas las sesiones)
+    s += '\n===== HISTORIAL COMPLETO (todas las sesiones) =====\n';
+    sorted.forEach(w => {
+      s += `\n[${w.date}] ${modeTag(w.mode)}${w.routineName}\n`;
+      if (w.mode === 'cardio') {
+        const c = w.cardio || {};
+        s += `  ${[c.distance ? c.distance + ' km' : '', c.duration ? c.duration + ' min' : '', c.maxRpm ? c.maxRpm + ' rpm' : ''].filter(Boolean).join(', ')}\n`;
+        if (c.note) s += `  Nota: ${c.note}\n`;
+        return;
+      }
+      (w.exercises || []).forEach(ex => {
+        const done = ex.sets.filter(x => x.done);
+        if (done.length) {
+          s += `  ${ex.name}: ${done.map(x => `${x.weight}kg×${x.reps}`).join(', ')}\n`;
+          if (ex.comment) s += `    Nota: ${ex.comment}\n`;
+        }
+      });
+    });
+
+    // 3) Evolución por ejercicio (nº sesiones, primera, última, mejor marca)
+    s += '\n===== EVOLUCIÓN POR EJERCICIO =====\n';
+    const perEx = {};
+    sorted.forEach(w => (w.exercises || []).forEach(ex => {
+      const done = ex.sets.filter(x => x.done);
+      if (!done.length) return;
+      const best = done.reduce((a, b) => ((b.weight || 0) >= (a.weight || 0) ? b : a), done[0]);
+      (perEx[ex.name] = perEx[ex.name] || []).push({date: w.date, w: best.weight || 0, r: best.reps || 0});
+    }));
+    Object.keys(perEx).sort().forEach(name => {
+      const pts = perEx[name];
+      const first = pts[0], last = pts[pts.length - 1];
+      const peak = pts.reduce((a, b) => (b.w > a.w ? b : a), pts[0]);
+      s += `  ${name}: ${pts.length} sesiones · inicio ${first.w}kg×${first.r} (${first.date}) → última ${last.w}kg×${last.r} (${last.date}) · máx ${peak.w}kg\n`;
+    });
+
+    // 4) Rutinas actuales
+    s += '\n===== RUTINAS Y PLANTILLAS ACTUALES =====\n';
+    routines.forEach(r => {
+      s += `\n[${r.name}] (id: ${r.id}, modo: ${r.mode || 'gym'})\n`;
+      r.exercises.forEach(re => {
+        const ex = exMap[re.exerciseId];
+        s += `  ${ex?.name || re.exerciseId}: ${re.sets}×${re.repsMin}-${re.repsMax} @ ${re.weight}kg\n`;
+      });
+    });
+
+    // 5) Plan y objetivos actuales
+    if (planData) {
+      s += '\n===== PLAN ACTUAL =====\n';
+      planData.value.weeks.forEach((w, i) => {
+        s += `${w.label || 'Semana ' + (i + 1)}: ${(w.workouts || []).map(pw => pw.routineId).join(', ')}\n`;
+      });
+    }
+    if (goals.length) {
+      s += '\n===== OBJETIVOS ACTUALES =====\n';
+      goals.forEach(g => { s += `  ${exMap[g.id]?.name || g.id}: ${g.targets.map(t => `${t.months}M=${t.weight}kg`).join(', ')}\n`; });
+    }
+
+    s += '\n===== IDs PARA EL JSON =====\n';
+    s += 'Plantillas: upper_a, lower_a, upper_b, lower_b (gym) · kb_a, kb_b, kb_c · cali_a, cali_b\n';
+    s += 'exerciseId: usa los del glosario. Categorías volumen: Chest, Back, Shoulders, Biceps, Triceps, Legs, Abs.\n';
+
+    await this._copyOrShow(s, 'Volcado completo para el entrenador');
   },
 
   showImport() {
