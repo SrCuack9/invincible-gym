@@ -200,6 +200,8 @@ body{display:flex;flex-direction:column}
 .plan-workout.completed:active{transform:none}
 .plan-workout .pw-name{font-size:14px;font-weight:600}
 .plan-workout .pw-label{font-size:11px;color:var(--text2)}
+.plan-workout .pw-del{background:none;border:none;color:var(--text3);font-size:14px;padding:4px 6px;margin-left:6px;cursor:pointer;border-radius:4px}
+.plan-workout .pw-del:active{background:var(--bg4);color:var(--red)}
 
 .tabs-sm{display:flex;gap:4px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px}
 .tabs-sm .tab{padding:6px 10px;font-size:11px}
@@ -236,7 +238,7 @@ body{display:flex;flex-direction:column}
     <div class="card mt-12">
       <div class="card-title">Otro entreno</div>
       <div class="other-grid">
-        <button class="other-btn" onclick="App.workout.startFree('gym')"><span>&#127947;</span>Gimnasio libre</button>
+        <button class="other-btn" onclick="App.workout.chooseTemplate('gym')"><span>&#127947;</span>Gimnasio</button>
         <button class="other-btn" onclick="App.workout.chooseTemplate('kettlebell')"><span>&#128296;</span>Kettlebell</button>
         <button class="other-btn" onclick="App.workout.chooseTemplate('calistenia')"><span>&#129336;</span>Calistenia</button>
         <button class="other-btn" onclick="App.cardio.show()"><span>&#127939;</span>Cardio</button>
@@ -305,6 +307,11 @@ body{display:flex;flex-direction:column}
     <div id="historyList"></div>
   </div>
 
+  <div class="screen" id="screenDiet">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Dieta</h2>
+    <div id="dietContent"></div>
+  </div>
+
   <div class="screen" id="screenSettings">
     <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Ajustes</h2>
 
@@ -348,7 +355,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.5<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.6<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -372,6 +379,10 @@ body{display:flex;flex-direction:column}
   <div class="nav-item" data-screen="screenHistory" onclick="App.nav('screenHistory')">
     <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
     <span>Historial</span>
+  </div>
+  <div class="nav-item" data-screen="screenDiet" onclick="App.nav('screenDiet')">
+    <svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+    <span>Dieta</span>
   </div>
   <div class="nav-item" data-screen="screenSettings" onclick="App.nav('screenSettings')">
     <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
@@ -791,7 +802,7 @@ const DB = {
   db: null,
   async init() {
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open('InvincibleGym', 3);
+      const req = indexedDB.open('InvincibleGym', 4);
       req.onupgradeneeded = e => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('exercises')) db.createObjectStore('exercises', {keyPath:'id'});
@@ -802,6 +813,8 @@ const DB = {
         }
         if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', {keyPath:'key'});
         if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', {keyPath:'id'});
+        // v4: métricas de dieta/cuerpo (proteína diaria, peso, cintura). id = tipo_fecha
+        if (!db.objectStoreNames.contains('metrics')) db.createObjectStore('metrics', {keyPath:'id'});
       };
       req.onsuccess = e => { DB.db = e.target.result; resolve(); };
       req.onerror = e => reject(e);
@@ -955,6 +968,7 @@ App.nav = function(screenId) {
   if (screenId === 'screenHistory') App.history.render();
   if (screenId === 'screenHome') App.home.render();
   if (screenId === 'screenGoals') App.goals.render();
+  if (screenId === 'screenDiet') App.diet.render();
   if (screenId === 'screenKbProgram') App.kbProgram.render();
   history.pushState({screen: screenId}, '', '');
 };
@@ -1118,29 +1132,72 @@ App.home = {
         const routine = routineMap[pw.routineId];
         const name = routine ? routine.name : pw.routineId;
         const isCompleted = pw.completed;
+        const subl = `${pw.label || ''}${pw.optional ? (pw.label ? ' · ' : '') + 'opcional' : ''}`;
 
         if (isCurrent && !isCompleted) {
-          html += `<div class="plan-workout" onclick="App.workout.start('${pw.routineId}')">
-            <div><div class="pw-name">${name}</div><div class="pw-label">${pw.label || ''}</div></div>
-            <span class="badge badge-gold">Pendiente</span>
+          html += `<div class="plan-workout">
+            <div style="flex:1" onclick="App.workout.start('${pw.routineId}')"><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
+            <span class="badge" style="background:${pw.optional ? 'var(--bg4)' : 'var(--gold)'};color:${pw.optional ? 'var(--text2)' : '#000'}">${pw.optional ? 'Opcional' : 'Pendiente'}</span>
+            <button class="pw-del" onclick="App.home.removeFromWeek(${wi},${pwi})" title="Quitar de la semana">&#10005;</button>
           </div>`;
         } else if (isCompleted) {
           html += `<div class="plan-workout completed">
-            <div><div class="pw-name">${name}</div><div class="pw-label">${pw.label || ''}</div></div>
+            <div><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
             <span class="badge badge-green">&#10003; Hecho</span>
           </div>`;
         } else {
           html += `<div class="plan-workout" style="opacity:.4;cursor:default">
-            <div><div class="pw-name">${name}</div><div class="pw-label">${pw.label || ''}</div></div>
+            <div><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
           </div>`;
         }
       });
+
+      if (isCurrent) {
+        html += `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:4px" onclick="App.home.addToWeek(${wi})">+ Añadir día a esta semana</button>`;
+      }
 
       html += '</div>';
     });
 
     html += `<button class="btn btn-secondary btn-sm mt-12" onclick="App.home.clearPlan()" style="width:auto">Quitar plan</button>`;
     $('planSection').innerHTML = html;
+  },
+
+  async addToWeek(wi) {
+    const routines = await DB.getAll('routines');
+    const order = ['upper_a','lower_a','upper_b','lower_b','kb_a','kb_b','kb_c','cali_a','cali_b'];
+    routines.sort((a, b) => (order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id)) - (order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id)));
+    let html = '<h2>Añadir día a la semana</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige la plantilla que quieras meter esta semana.</p>';
+    routines.forEach(r => {
+      const tag = (!r.mode || r.mode === 'gym') ? 'GYM' : r.mode === 'kettlebell' ? 'KB' : 'CALI';
+      html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.home.confirmAddToWeek(${wi},'${r.id}')">
+        <span class="eli-name">${r.name}</span><span class="eli-cat">${tag}</span>
+      </div>`;
+    });
+    App.modal.open(html);
+  },
+
+  async confirmAddToWeek(wi, routineId) {
+    const optional = confirm('¿Marcar este día como OPCIONAL?\n\nAceptar = opcional (no cuenta como incumplido si no lo haces).\nCancelar = normal.');
+    const planData = await DB.get('settings', 'trainingPlan');
+    if (!planData) return;
+    const week = planData.value.weeks[wi];
+    week.workouts = week.workouts || [];
+    week.workouts.push({routineId, label: 'Extra', completed: false, optional});
+    await DB.put('settings', planData);
+    App.modal.forceClose();
+    toast('Día añadido a la semana');
+    this.render();
+  },
+
+  async removeFromWeek(wi, pwi) {
+    if (!confirm('¿Quitar este día de la semana?')) return;
+    const planData = await DB.get('settings', 'trainingPlan');
+    if (!planData) return;
+    planData.value.weeks[wi].workouts.splice(pwi, 1);
+    await DB.put('settings', planData);
+    toast('Día quitado');
+    this.render();
   },
 
   async clearPlan() {
@@ -1343,9 +1400,9 @@ App.workout = {
   // Muestra las plantillas disponibles de un modo (kettlebell o calistenia)
   async chooseTemplate(mode) {
     const all = await DB.getAll('routines');
-    const list = all.filter(r => r.mode === mode);
-    const title = mode === 'kettlebell' ? 'Kettlebell' : 'Calistenia';
-    let html = `<h2>${title}</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige una plantilla o empieza una sesión libre.</p>`;
+    const list = all.filter(r => (mode === 'gym' ? (!r.mode || r.mode === 'gym') : r.mode === mode));
+    const title = mode === 'kettlebell' ? 'Kettlebell' : mode === 'calistenia' ? 'Calistenia' : 'Gimnasio';
+    let html = `<h2>${title}</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige una plantilla (puedes hacer cualquiera cualquier día) o empieza una sesión libre.</p>`;
     if (mode === 'kettlebell') {
       html += `<div class="ex-list-item" style="cursor:pointer;border:1px solid var(--gold)" onclick="App.kbProgram.open()">
         <span class="eli-name" style="color:var(--gold)">&#128203; Ver programa completo (Triple Strength, 6 semanas)</span>
@@ -1562,7 +1619,11 @@ App.workout = {
     };
     await DB.put('workouts', workout);
 
-    if ((this.active.mode || 'gym') === 'gym') await this.updatePlan(this.active.routineId, workoutId);
+    // Marca el día del plan como completado si coincide con una plantilla (cualquier modo).
+    // Las sesiones libres (free_*) y el cardio no cuentan para el plan → quedan como "extra".
+    if (this.active.routineId && !this.active.routineId.startsWith('free_') && this.active.mode !== 'cardio') {
+      await this.updatePlan(this.active.routineId, workoutId);
+    }
 
     this.active = null;
     localStorage.removeItem('gym_autosave');
@@ -1642,6 +1703,131 @@ App.kbProgram = {
   startDay(wi, woi) {
     const wo = KB_PROGRAM.weeks[wi].workouts[woi];
     App.workout.startFree('kettlebell', `KB Sem ${wi + 1} · ${wo.d}`);
+  }
+};
+
+// ============================================================
+// DIETA / MÉTRICAS (proteína diaria, peso semanal, cintura mensual)
+// ============================================================
+App.diet = {
+  async getAll(type) {
+    const all = await DB.getAll('metrics');
+    return all.filter(m => m.type === type).sort((a, b) => a.date.localeCompare(b.date));
+  },
+  async log(type, value, unit) {
+    const date = todayStr();
+    await DB.put('metrics', {id: `${type}_${date}`, type, date, value, unit});
+  },
+  // Objetivo de proteína: 1.9 g/kg si hay peso registrado, si no 130 g
+  proteinTarget(lastWeight) {
+    if (lastWeight) return Math.round(lastWeight * 1.9);
+    return 130;
+  },
+  async render() {
+    const protein = await this.getAll('protein');
+    const weights = await this.getAll('weight');
+    const waists = await this.getAll('waist');
+    const today = todayStr();
+    const lastWeight = weights.length ? weights[weights.length - 1].value : null;
+    const manual = (await DB.get('settings', 'proteinTarget'))?.value;
+    const target = manual || this.proteinTarget(lastWeight);
+    const todayProtein = protein.find(p => p.date === today);
+    const pVal = todayProtein ? todayProtein.value : 0;
+    const pPct = Math.min(100, Math.round((pVal / target) * 100));
+
+    // Media de proteína últimos 7 días
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const last7 = protein.filter(p => p.date >= cutoffStr);
+    const avg7 = last7.length ? Math.round(last7.reduce((s, p) => s + p.value, 0) / last7.length) : 0;
+
+    const wTrend = (arr, unit) => {
+      if (!arr.length) return '<span style="color:var(--text3)">Sin registros</span>';
+      const last = arr[arr.length - 1];
+      let diff = '';
+      if (arr.length >= 2) {
+        const prev = arr[arr.length - 2];
+        const d = (last.value - prev.value).toFixed(1);
+        diff = ` <span style="color:${d > 0 ? 'var(--gold)' : d < 0 ? 'var(--blue)' : 'var(--text3)'}">(${d >= 0 ? '+' : ''}${d})</span>`;
+      }
+      return `<b>${last.value} ${unit}</b>${diff} <span style="color:var(--text3);font-size:11px">${formatDate(last.date)}</span>`;
+    };
+
+    let html = `
+      <div class="card">
+        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Proteína de hoy</div><button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 10px" onclick="App.diet.setTarget()">Ajustar objetivo</button></div>
+        <div class="flex-between mb-8 mt-8"><span class="text-sm" style="color:var(--text2)">Objetivo ${target} g${manual ? ' (manual)' : lastWeight ? ' (~1,9 g/kg)' : ''}</span><span class="fw-700" style="color:${pVal >= target ? 'var(--green)' : 'var(--gold)'}">${pVal} / ${target} g</span></div>
+        <div class="bar-bg mb-12"><div class="bar-fill ${pVal >= target ? 'bar-ok' : 'bar-low'}" style="width:${pPct}%"></div></div>
+        <div style="display:flex;gap:8px">
+          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="g de hoy" value="${pVal || ''}" style="flex:1">
+          <button class="btn btn-primary" style="width:auto" onclick="App.diet.saveProtein()">Guardar</button>
+        </div>
+        <p class="text-sm mt-8" style="color:var(--text3)">Media últimos 7 días: ${avg7} g/día</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Peso corporal (semanal)</div>
+        <div class="mb-8">${wTrend(weights, 'kg')}</div>
+        <div style="display:flex;gap:8px">
+          <input type="number" inputmode="decimal" step="0.1" class="input" id="weightInput" placeholder="kg" style="flex:1">
+          <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWeight()">Registrar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Cintura (mensual)</div>
+        <div class="mb-8">${wTrend(waists, 'cm')}</div>
+        <div style="display:flex;gap:8px">
+          <input type="number" inputmode="decimal" step="0.5" class="input" id="waistInput" placeholder="cm" style="flex:1">
+          <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWaist()">Registrar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Guía rápida</div>
+        <p class="text-sm" style="color:var(--text2);line-height:1.6">
+          &#128170; <b>Proteína:</b> ~1,8-2,1 g por kg de peso al día (para ti, ~${lastWeight ? Math.round(lastWeight * 1.8) + '-' + Math.round(lastWeight * 2.1) : '120-140'} g).<br>
+          &#127838; <b>Calorías:</b> superávit ligero (+150-250 kcal) para ganar músculo con poca grasa.<br>
+          &#9878; <b>Creatina:</b> 5 g <b>todos los días</b> (funciona por saturación, no por timing; también en días de descanso).<br>
+          &#128200; <b>Grasa localizada:</b> no existe la pérdida localizada. La grasa del abdomen se irá la última, al recomponer (más músculo + déficit suave más adelante).
+        </p>
+      </div>
+    `;
+    $('dietContent').innerHTML = html;
+  },
+  async setTarget() {
+    const cur = (await DB.get('settings', 'proteinTarget'))?.value;
+    const ans = prompt('Objetivo de proteína en gramos.\nDeja vacío para calcularlo automáticamente según tu peso (~1,9 g/kg).', cur || '');
+    if (ans === null) return;
+    if (ans.trim() === '') { await DB.del('settings', 'proteinTarget'); toast('Objetivo automático (según peso)'); }
+    else {
+      const v = parseInt(ans, 10);
+      if (!v || v <= 0) { toast('Número no válido'); return; }
+      await DB.put('settings', {key: 'proteinTarget', value: v});
+      toast(`Objetivo fijado en ${v} g`);
+    }
+    this.render();
+  },
+  async saveProtein() {
+    const v = parseFloat($('proteinInput').value);
+    if (!v || v <= 0) { toast('Escribe los gramos de proteína'); return; }
+    await this.log('protein', Math.round(v), 'g');
+    toast('Proteína guardada');
+    this.render();
+  },
+  async saveWeight() {
+    const v = parseFloat($('weightInput').value);
+    if (!v || v <= 0) { toast('Escribe tu peso'); return; }
+    await this.log('weight', v, 'kg');
+    toast('Peso registrado');
+    this.render();
+  },
+  async saveWaist() {
+    const v = parseFloat($('waistInput').value);
+    if (!v || v <= 0) { toast('Escribe tu cintura'); return; }
+    await this.log('waist', v, 'cm');
+    toast('Cintura registrada');
+    this.render();
   }
 };
 
@@ -2356,6 +2542,20 @@ App.claude = {
     summary += '\n--- ENTRENOS POR TIPO ---\n';
     summary += `  Gimnasio: ${modeCounts.gym || 0} · Kettlebell: ${modeCounts.kettlebell || 0} · Calistenia: ${modeCounts.calistenia || 0} · Cardio: ${modeCounts.cardio || 0}\n`;
 
+    // Nutrición reciente
+    const metrics = await DB.getAll('metrics');
+    const mBy = t => metrics.filter(m => m.type === t).sort((a, b) => a.date.localeCompare(b.date));
+    const prot = mBy('protein'), wts = mBy('weight'), wsts = mBy('waist');
+    if (prot.length || wts.length || wsts.length) {
+      summary += '\n--- NUTRICIÓN RECIENTE ---\n';
+      if (prot.length) {
+        const l7 = prot.slice(-7);
+        summary += `  Proteína media 7 días: ${Math.round(l7.reduce((a, p) => a + p.value, 0) / l7.length)} g/día (${l7.length} días con registro)\n`;
+      }
+      if (wts.length) { const l = wts[wts.length - 1]; summary += `  Peso actual: ${l.value} kg (${l.date})${wts.length > 1 ? ` · antes ${wts[wts.length - 2].value} kg` : ''}\n`; }
+      if (wsts.length) { const l = wsts[wsts.length - 1]; summary += `  Cintura: ${l.value} cm (${l.date})\n`; }
+    }
+
     summary += '\n--- RUTINAS Y PLANTILLAS ---\n';
     routines.forEach(r => {
       summary += `\n[${r.name}] (id: ${r.id}, modo: ${r.mode || 'gym'})\n`;
@@ -2521,6 +2721,22 @@ App.claude = {
       goals.forEach(g => { s += `  ${exMap[g.id]?.name || g.id}: ${g.targets.map(t => `${t.months}M=${t.weight}kg`).join(', ')}\n`; });
     }
 
+    // Nutrición / métricas corporales
+    const metrics = await DB.getAll('metrics');
+    const mByType = t => metrics.filter(m => m.type === t).sort((a, b) => a.date.localeCompare(b.date));
+    const prot = mByType('protein'), wts = mByType('weight'), wsts = mByType('waist');
+    if (prot.length || wts.length || wsts.length) {
+      s += '\n===== NUTRICIÓN Y CUERPO =====\n';
+      if (prot.length) {
+        const avg = Math.round(prot.reduce((a, p) => a + p.value, 0) / prot.length);
+        const last14 = prot.slice(-14);
+        const avg14 = Math.round(last14.reduce((a, p) => a + p.value, 0) / last14.length);
+        s += `  Proteína: ${prot.length} días registrados · media ${avg} g/día (últimos 14: ${avg14} g/día)\n`;
+      }
+      if (wts.length) s += `  Peso: ${wts.map(w => `${w.date}:${w.value}kg`).join(' · ')}\n`;
+      if (wsts.length) s += `  Cintura: ${wsts.map(w => `${w.date}:${w.value}cm`).join(' · ')}\n`;
+    }
+
     s += '\n===== IDs PARA EL JSON =====\n';
     s += 'Plantillas: upper_a, lower_a, upper_b, lower_b (gym) · kb_a, kb_b, kb_c · cali_a, cali_b\n';
     s += 'exerciseId: usa los del glosario. Categorías volumen: Chest, Back, Shoulders, Biceps, Triceps, Legs, Abs.\n';
@@ -2614,6 +2830,7 @@ App.data = {
       routines: await DB.getAll('routines'),
       workouts: await DB.getAll('workouts'),
       goals: await DB.getAll('goals'),
+      metrics: await DB.getAll('metrics'),
       plan: planData ? planData.value : null,
       volumeTargets: vtData ? vtData.value : null,
       exportDate: new Date().toISOString()
@@ -2664,6 +2881,11 @@ App.data = {
         added = missing.length;
       }
       if (data.goals) for (const g of data.goals) await DB.put('goals', g);
+      if (data.metrics) {
+        const have = new Set((await DB.getAll('metrics')).map(m => m.id));
+        const miss = data.metrics.filter(m => !have.has(m.id));
+        if (miss.length) await DB.putAll('metrics', miss);
+      }
       if (data.plan) await DB.put('settings', {key:'trainingPlan', value: data.plan});
       if (data.volumeTargets) {
         customVolumeTargets = data.volumeTargets;
