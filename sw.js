@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invincible-gym-v6';
+const CACHE_NAME = 'invincible-gym-v7';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {

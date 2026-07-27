@@ -310,8 +310,9 @@ body{display:flex;flex-direction:column}
 
     <div class="card">
       <div class="card-title">Tu entrenador (Claude)</div>
-      <p class="text-sm mb-12" style="color:var(--text2)">La <b>primera vez</b> (o al reiniciar el entrenador): copia el volcado completo y pégalo en un chat nuevo junto al prompt del entrenador.</p>
-      <button class="btn btn-primary mb-8" onclick="App.claude.generateFullExport()">Exportar TODO para el entrenador</button>
+      <p class="text-sm mb-12" style="color:var(--text2)">La <b>primera vez</b> (o al reiniciar el entrenador): descarga el volcado completo y <b>adjúntalo</b> como archivo en un chat nuevo, junto al prompt del entrenador.</p>
+      <button class="btn btn-primary mb-8" onclick="App.claude.downloadFullExport()">Descargar TODO (.txt) para el entrenador</button>
+      <button class="btn btn-secondary mb-8" onclick="App.claude.generateFullExport()">…o copiarlo al portapapeles</button>
       <p class="text-sm mb-8 mt-8" style="color:var(--text2)">Para el <b>seguimiento semanal</b>, una vez ya te conoce:</p>
       <button class="btn btn-secondary mb-8" onclick="App.claude.generateSummary()">Copiar resumen semanal</button>
       <button class="btn btn-secondary" onclick="App.claude.showImport()">Importar cambios del entrenador</button>
@@ -347,7 +348,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.3<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.4<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -2433,7 +2434,7 @@ App.claude = {
   },
 
   // Volcado COMPLETO para el primer mensaje al entrenador: glosario + TODO el historial + evolución
-  async generateFullExport() {
+  async _buildFullExport() {
     const workouts = await DB.getAll('workouts');
     const routines = await DB.getAll('routines');
     const exercises = await DB.getAll('exercises');
@@ -2524,7 +2525,23 @@ App.claude = {
     s += 'Plantillas: upper_a, lower_a, upper_b, lower_b (gym) · kb_a, kb_b, kb_c · cali_a, cali_b\n';
     s += 'exerciseId: usa los del glosario. Categorías volumen: Chest, Back, Shoulders, Biceps, Triceps, Legs, Abs.\n';
 
-    await this._copyOrShow(s, 'Volcado completo para el entrenador');
+    return s;
+  },
+
+  async generateFullExport() {
+    await this._copyOrShow(await this._buildFullExport(), 'Volcado completo para el entrenador');
+  },
+
+  async downloadFullExport() {
+    const text = await this._buildFullExport();
+    const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invincible_coach_${todayStr()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Archivo .txt descargado. Adjúntalo en el chat del entrenador.');
   },
 
   showImport() {
