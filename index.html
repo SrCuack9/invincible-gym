@@ -348,7 +348,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.4<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.5<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -2861,7 +2861,26 @@ async function init() {
   handleDeepLink();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // Busca actualizaciones al abrir
+      reg.update().catch(() => {});
+      // Cuando entra una versión nueva, la activa y recarga una vez
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('skipWaiting');
+          }
+        });
+      });
+    }).catch(() => {});
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
   }
 
   window.addEventListener('popstate', () => {
