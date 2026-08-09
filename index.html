@@ -66,6 +66,12 @@ body{display:flex;flex-direction:column}
 .mode-badge.cali{background:#2ecc71;color:#000}
 .mode-badge.cardio{background:#95a5a6;color:#000}
 .ex-desc{font-size:11px;color:var(--text2);line-height:1.4;font-style:italic;padding:0 2px 6px}
+.food-chips{display:flex;flex-wrap:wrap;gap:6px}
+.food-chip{background:var(--bg3);border:1px solid var(--bg4);color:var(--text);font-size:12px;padding:6px 10px;border-radius:16px;cursor:pointer}
+.food-chip:active{transform:scale(.95);border-color:var(--gold)}
+.food-chip b{color:var(--gold)}
+.food-chip-add{border-style:dashed;color:var(--text2)}
+.btn-link{background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline}
 .kb-prog-ex{padding:8px 0;border-bottom:1px solid var(--bg3)}
 .kb-prog-ex:last-child{border-bottom:none}
 .kb-prog-name{font-size:13px;font-weight:600;color:var(--text)}
@@ -355,7 +361,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.6<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.7<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -901,6 +907,14 @@ function getMonthStartStr() {
   const now = new Date();
   const m = (now.getMonth() + 1).toString().padStart(2, '0');
   return `${now.getFullYear()}-${m}-01`;
+}
+
+// Lunes de la semana de una fecha dada (YYYY-MM-DD)
+function weekStartOf(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().split('T')[0];
 }
 
 function getYearStartStr() {
@@ -1709,91 +1723,243 @@ App.kbProgram = {
 // ============================================================
 // DIETA / MÉTRICAS (proteína diaria, peso semanal, cintura mensual)
 // ============================================================
+const DEFAULT_PROTEIN_FOODS = [
+  {name:'Batido', g:25}, {name:'Atún lata', g:12.6}, {name:'Huevo', g:6},
+  {name:'Pollo 100g', g:31}, {name:'Yogur griego', g:10}, {name:'Pavo loncha', g:5},
+  {name:'Requesón 100g', g:12}, {name:'Lentejas plato', g:18},
+];
+
 App.diet = {
   async getAll(type) {
     const all = await DB.getAll('metrics');
     return all.filter(m => m.type === type).sort((a, b) => a.date.localeCompare(b.date));
   },
-  async log(type, value, unit) {
-    const date = todayStr();
-    await DB.put('metrics', {id: `${type}_${date}`, type, date, value, unit});
+  async setValue(type, value, unit) {
+    await DB.put('metrics', {id: `${type}_${todayStr()}`, type, date: todayStr(), value, unit});
   },
-  // Objetivo de proteína: 1.9 g/kg si hay peso registrado, si no 130 g
-  proteinTarget(lastWeight) {
-    if (lastWeight) return Math.round(lastWeight * 1.9);
-    return 130;
+  proteinTarget(lastWeight) { return lastWeight ? Math.round(lastWeight * 1.9) : 130; },
+  async foods() { return (await DB.get('settings', 'proteinFoods'))?.value || DEFAULT_PROTEIN_FOODS; },
+
+  // Media de series [{date,value}] dentro de los N días anteriores a la última fecha
+  movingAvg(series, days) {
+    if (!series.length) return null;
+    const end = new Date(series[series.length - 1].date + 'T00:00:00');
+    const start = new Date(end); start.setDate(end.getDate() - (days - 1));
+    const startStr = start.toISOString().split('T')[0];
+    const win = series.filter(s => s.date >= startStr);
+    return win.reduce((a, s) => a + s.value, 0) / win.length;
   },
+  // Agrupa una métrica por semana (lunes): [{week, avg, n}]
+  weekly(series) {
+    const byWeek = {};
+    series.forEach(m => { const w = weekStartOf(m.date); (byWeek[w] = byWeek[w] || []).push(m.value); });
+    return Object.keys(byWeek).sort().map(w => ({week: w, avg: byWeek[w].reduce((a, b) => a + b, 0) / byWeek[w].length, n: byWeek[w].length}));
+  },
+  // Sparkline SVG. Si maDays, dibuja también la media móvil como línea sólida.
+  spark(series, color, maDays) {
+    if (series.length < 2) return '<div class="text-sm" style="color:var(--text3);padding:8px 0">Necesitas 2+ registros para la gráfica</div>';
+    const vals = series.map(s => s.value);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const W = 300, H = 64, pad = 8, range = max - min;
+    const x = i => (i / (series.length - 1)) * (W - 2 * pad) + pad;
+    const y = v => H - pad - ((v - min) / range) * (H - 2 * pad);
+    const raw = series.map((s, i) => `${x(i).toFixed(1)},${y(s.value).toFixed(1)}`).join(' ');
+    let maLine = '';
+    if (maDays) {
+      const ma = series.map((s, i) => {
+        const st = new Date(s.date + 'T00:00:00'); st.setDate(st.getDate() - (maDays - 1));
+        const stStr = st.toISOString().split('T')[0];
+        const win = series.filter((o, j) => j <= i && o.date >= stStr);
+        return win.reduce((a, o) => a + o.value, 0) / win.length;
+      });
+      const maPts = ma.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      maLine = `<polyline points="${maPts}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+    }
+    return `<div class="text-sm" style="color:var(--text3);display:flex;justify-content:space-between"><span>${min.toFixed(1)}</span><span>${max.toFixed(1)}</span></div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="64" preserveAspectRatio="none" style="display:block">
+        <polyline points="${raw}" fill="none" stroke="${color}" stroke-width="1.5" opacity="${maDays ? '0.35' : '1'}"/>
+        ${maLine}
+      </svg>`;
+  },
+
   async render() {
     const protein = await this.getAll('protein');
     const weights = await this.getAll('weight');
     const waists = await this.getAll('waist');
+    const foods = await this.foods();
     const today = todayStr();
     const lastWeight = weights.length ? weights[weights.length - 1].value : null;
     const manual = (await DB.get('settings', 'proteinTarget'))?.value;
     const target = manual || this.proteinTarget(lastWeight);
-    const todayProtein = protein.find(p => p.date === today);
-    const pVal = todayProtein ? todayProtein.value : 0;
+    const pVal = protein.find(p => p.date === today)?.value || 0;
     const pPct = Math.min(100, Math.round((pVal / target) * 100));
 
-    // Media de proteína últimos 7 días
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
-    const last7 = protein.filter(p => p.date >= cutoffStr);
-    const avg7 = last7.length ? Math.round(last7.reduce((s, p) => s + p.value, 0) / last7.length) : 0;
+    const foodChips = foods.map((f, i) =>
+      `<button class="food-chip" onclick="App.diet.addFood(${i})">${f.name} <b>+${f.g}</b></button>`
+    ).join('') + `<button class="food-chip food-chip-add" onclick="App.diet.quickAddFood()">+ Nuevo</button>`;
 
-    const wTrend = (arr, unit) => {
-      if (!arr.length) return '<span style="color:var(--text3)">Sin registros</span>';
-      const last = arr[arr.length - 1];
-      let diff = '';
-      if (arr.length >= 2) {
-        const prev = arr[arr.length - 2];
-        const d = (last.value - prev.value).toFixed(1);
-        diff = ` <span style="color:${d > 0 ? 'var(--gold)' : d < 0 ? 'var(--blue)' : 'var(--text3)'}">(${d >= 0 ? '+' : ''}${d})</span>`;
-      }
-      return `<b>${last.value} ${unit}</b>${diff} <span style="color:var(--text3);font-size:11px">${formatDate(last.date)}</span>`;
-    };
+    // Peso: media móvil 7 días (número grande) + medición del día (pequeño)
+    const wMA = this.movingAvg(weights, 7);
+    const weekW = this.weekly(weights);
+    let weekChange = '';
+    if (weekW.length >= 2) {
+      const g = (weekW[weekW.length - 1].avg - weekW[weekW.length - 2].avg) * 1000;
+      const inRange = g >= 100 && g <= 300;
+      weekChange = `<div class="text-sm mt-4" style="color:${inRange ? 'var(--green)' : Math.abs(g) < 100 ? 'var(--text2)' : 'var(--gold)'}">Cambio ~${g >= 0 ? '+' : ''}${g.toFixed(0)} g/semana ${inRange ? '(superávit correcto)' : g > 300 ? '(subiendo rápido)' : g < -50 ? '(bajando)' : '(estable)'}</div>`;
+    }
 
     let html = `
       <div class="card">
-        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Proteína de hoy</div><button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 10px" onclick="App.diet.setTarget()">Ajustar objetivo</button></div>
-        <div class="flex-between mb-8 mt-8"><span class="text-sm" style="color:var(--text2)">Objetivo ${target} g${manual ? ' (manual)' : lastWeight ? ' (~1,9 g/kg)' : ''}</span><span class="fw-700" style="color:${pVal >= target ? 'var(--green)' : 'var(--gold)'}">${pVal} / ${target} g</span></div>
+        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Proteína de hoy</div><button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 10px" onclick="App.diet.setTarget()">Objetivo</button></div>
+        <div class="flex-between mb-8 mt-8"><span class="text-sm" style="color:var(--text2)">Objetivo ${target} g${manual ? ' (manual)' : lastWeight ? ' (~1,9 g/kg)' : ''}</span><span class="fw-700" style="color:${pVal >= target ? 'var(--green)' : 'var(--gold)'}">${Math.round(pVal)} / ${target} g</span></div>
         <div class="bar-bg mb-12"><div class="bar-fill ${pVal >= target ? 'bar-ok' : 'bar-low'}" style="width:${pPct}%"></div></div>
-        <div style="display:flex;gap:8px">
-          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="g de hoy" value="${pVal || ''}" style="flex:1">
-          <button class="btn btn-primary" style="width:auto" onclick="App.diet.saveProtein()">Guardar</button>
+        <div class="food-chips">${foodChips}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="+ g extra" style="flex:1">
+          <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManual()">Añadir</button>
         </div>
-        <p class="text-sm mt-8" style="color:var(--text3)">Media últimos 7 días: ${avg7} g/día</p>
+        <div class="flex-between mt-8">
+          <button class="btn-link" onclick="App.diet.correctToday()">Corregir total</button>
+          <button class="btn-link" onclick="App.diet.manageFoods()">Editar alimentos</button>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Peso corporal (semanal)</div>
-        <div class="mb-8">${wTrend(weights, 'kg')}</div>
-        <div style="display:flex;gap:8px">
-          <input type="number" inputmode="decimal" step="0.1" class="input" id="weightInput" placeholder="kg" style="flex:1">
+        <div class="card-title">Peso corporal</div>
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span style="font-size:30px;font-weight:800;color:var(--gold)">${wMA ? wMA.toFixed(1) : '--'}</span>
+          <span class="text-sm" style="color:var(--text2)">kg · media 7 días</span>
+        </div>
+        <div class="text-sm" style="color:var(--text3)">${lastWeight ? `Último: ${lastWeight} kg (${formatDate(weights[weights.length - 1].date)})` : 'Sin registros'}</div>
+        ${weekChange}
+        <div class="mt-8">${this.spark(weights, '#f5a623', 7)}</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="number" inputmode="decimal" step="0.1" class="input" id="weightInput" placeholder="kg de hoy" style="flex:1">
           <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWeight()">Registrar</button>
         </div>
       </div>
 
       <div class="card">
         <div class="card-title">Cintura (mensual)</div>
-        <div class="mb-8">${wTrend(waists, 'cm')}</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span style="font-size:24px;font-weight:800;color:var(--blue)">${waists.length ? waists[waists.length - 1].value : '--'}</span>
+          <span class="text-sm" style="color:var(--text2)">cm${waists.length >= 2 ? ` · ${(waists[waists.length - 1].value - waists[waists.length - 2].value) >= 0 ? '+' : ''}${(waists[waists.length - 1].value - waists[waists.length - 2].value).toFixed(1)} vs anterior` : ''}</span>
+        </div>
+        <div class="mt-8">${this.spark(waists, '#3b82f6')}</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
           <input type="number" inputmode="decimal" step="0.5" class="input" id="waistInput" placeholder="cm" style="flex:1">
           <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWaist()">Registrar</button>
         </div>
       </div>
 
       <div class="card">
+        <div class="card-title">Nota de esta semana</div>
+        <p class="text-sm mb-8" style="color:var(--text2)">Contexto que explique los datos: viajes, estrés, exámenes, enfermedad...</p>
+        <textarea class="input" id="weekNoteInput" rows="2" placeholder="Ej: semana de congreso, comí fuera 3 días" onchange="App.diet.saveNote(this.value)"></textarea>
+      </div>
+
+      <div class="card">
         <div class="card-title">Guía rápida</div>
         <p class="text-sm" style="color:var(--text2);line-height:1.6">
           &#128170; <b>Proteína:</b> ~1,8-2,1 g por kg de peso al día (para ti, ~${lastWeight ? Math.round(lastWeight * 1.8) + '-' + Math.round(lastWeight * 2.1) : '120-140'} g).<br>
-          &#127838; <b>Calorías:</b> superávit ligero (+150-250 kcal) para ganar músculo con poca grasa.<br>
-          &#9878; <b>Creatina:</b> 5 g <b>todos los días</b> (funciona por saturación, no por timing; también en días de descanso).<br>
-          &#128200; <b>Grasa localizada:</b> no existe la pérdida localizada. La grasa del abdomen se irá la última, al recomponer (más músculo + déficit suave más adelante).
+          &#127838; <b>Calorías:</b> superávit ligero (+150-250 kcal); el peso debería subir ~150-250 g/semana.<br>
+          &#9878; <b>Creatina:</b> 5 g <b>todos los días</b> (satura por acumulación, no por timing).<br>
+          &#128200; <b>Grasa localizada:</b> no existe. La del abdomen se irá la última al recomponer.
         </p>
       </div>
     `;
     $('dietContent').innerHTML = html;
+    // Carga la nota de la semana actual
+    const note = await DB.get('metrics', 'weeknote_' + getWeekStartStr());
+    if (note && $('weekNoteInput')) $('weekNoteInput').value = note.value || '';
+  },
+
+  async addFood(i) {
+    const foods = await this.foods();
+    const f = foods[i]; if (!f) return;
+    const cur = (await DB.get('metrics', 'protein_' + todayStr()))?.value || 0;
+    await this.setValue('protein', Math.round((cur + f.g) * 10) / 10, 'g');
+    toast(`${f.name} +${f.g} g`);
+    this.render();
+  },
+  async addManual() {
+    const v = parseFloat($('proteinInput').value);
+    if (!v || v <= 0) { toast('Escribe los gramos'); return; }
+    const cur = (await DB.get('metrics', 'protein_' + todayStr()))?.value || 0;
+    await this.setValue('protein', Math.round((cur + v) * 10) / 10, 'g');
+    toast(`+${v} g`);
+    this.render();
+  },
+  async correctToday() {
+    const cur = (await DB.get('metrics', 'protein_' + todayStr()))?.value || 0;
+    const ans = prompt('Total de proteína de HOY en gramos (corrige el valor):', cur);
+    if (ans === null) return;
+    const v = parseFloat(ans);
+    if (isNaN(v) || v < 0) { toast('Número no válido'); return; }
+    await this.setValue('protein', Math.round(v * 10) / 10, 'g');
+    this.render();
+  },
+  // Añadir un alimento a mano y guardarlo como chip (y sumarlo hoy) de un toque
+  async quickAddFood() {
+    const name = (prompt('Nombre del alimento (ej: Salmón 100g):') || '').trim();
+    if (!name) return;
+    const g = parseFloat(prompt(`Gramos de proteína de "${name}":`, ''));
+    if (!g || g <= 0) { toast('Gramos no válidos'); return; }
+    const foods = await this.foods();
+    foods.push({name, g});
+    await DB.put('settings', {key: 'proteinFoods', value: foods});
+    const cur = (await DB.get('metrics', 'protein_' + todayStr()))?.value || 0;
+    await this.setValue('protein', Math.round((cur + g) * 10) / 10, 'g');
+    toast(`${name} guardado y +${g} g`);
+    this.render();
+  },
+  async manageFoods() {
+    const foods = await this.foods();
+    let html = '<h2>Alimentos frecuentes</h2><p class="text-sm mb-12" style="color:var(--text2)">Toca la ✕ para quitar. Añade los tuyos abajo.</p>';
+    foods.forEach((f, i) => {
+      html += `<div class="ex-list-item"><span class="eli-name">${f.name}</span><span class="eli-cat">${f.g} g</span><button onclick="App.diet.removeFood(${i})">&#10005;</button></div>`;
+    });
+    html += `<div style="display:flex;gap:6px;margin-top:12px">
+      <input class="input" id="newFoodName" placeholder="Nombre" style="flex:2">
+      <input class="input" id="newFoodG" type="number" inputmode="decimal" placeholder="g" style="flex:1">
+    </div>
+    <button class="btn btn-primary mt-8" onclick="App.diet.addNewFood()">Añadir alimento</button>`;
+    App.modal.open(html);
+  },
+  async addNewFood() {
+    const name = $('newFoodName').value.trim();
+    const g = parseFloat($('newFoodG').value);
+    if (!name || !g || g <= 0) { toast('Pon nombre y gramos'); return; }
+    const foods = await this.foods();
+    foods.push({name, g});
+    await DB.put('settings', {key: 'proteinFoods', value: foods});
+    this.manageFoods();
+  },
+  async removeFood(i) {
+    const foods = await this.foods();
+    foods.splice(i, 1);
+    await DB.put('settings', {key: 'proteinFoods', value: foods});
+    this.manageFoods();
+  },
+  async saveWeight() {
+    const v = parseFloat($('weightInput').value);
+    if (!v || v <= 0) { toast('Escribe tu peso'); return; }
+    await this.setValue('weight', v, 'kg');
+    toast('Peso registrado');
+    this.render();
+  },
+  async saveWaist() {
+    const v = parseFloat($('waistInput').value);
+    if (!v || v <= 0) { toast('Escribe tu cintura'); return; }
+    await this.setValue('waist', v, 'cm');
+    toast('Cintura registrada');
+    this.render();
+  },
+  async saveNote(text) {
+    const wk = getWeekStartStr();
+    await DB.put('metrics', {id: 'weeknote_' + wk, type: 'weeknote', date: wk, value: text.trim()});
+    toast('Nota guardada');
   },
   async setTarget() {
     const cur = (await DB.get('settings', 'proteinTarget'))?.value;
@@ -1808,26 +1974,43 @@ App.diet = {
     }
     this.render();
   },
-  async saveProtein() {
-    const v = parseFloat($('proteinInput').value);
-    if (!v || v <= 0) { toast('Escribe los gramos de proteína'); return; }
-    await this.log('protein', Math.round(v), 'g');
-    toast('Proteína guardada');
-    this.render();
+
+  // Bloques para el entrenador
+  async fullBlock() {
+    const weekP = this.weekly(await this.getAll('protein'));
+    const weekW = this.weekly(await this.getAll('weight'));
+    const waists = await this.getAll('waist');
+    const notes = await this.getAll('weeknote');
+    if (!weekP.length && !weekW.length && !waists.length && !notes.length) return '';
+    let s = '\n===== DIETA Y COMPOSICIÓN =====\n';
+    if (weekW.length) {
+      s += 'Peso medio por semana (kg):\n';
+      let prev = null;
+      weekW.forEach(w => { const chg = prev !== null ? ` (${(w.avg - prev) >= 0 ? '+' : ''}${((w.avg - prev) * 1000).toFixed(0)} g/sem)` : ''; s += `  ${w.week}: ${w.avg.toFixed(1)}${chg}\n`; prev = w.avg; });
+    }
+    if (weekP.length) { s += 'Proteína media por semana (g/día):\n'; weekP.forEach(w => { s += `  ${w.week}: ${Math.round(w.avg)} (${w.n} días con registro)\n`; }); }
+    if (waists.length) s += 'Cintura (cm): ' + waists.map(w => `${w.date}:${w.value}`).join(' · ') + '\n';
+    if (notes.some(n => n.value)) { s += 'Notas de contexto por semana:\n'; notes.forEach(n => { if (n.value) s += `  ${n.date}: ${n.value}\n`; }); }
+    return s;
   },
-  async saveWeight() {
-    const v = parseFloat($('weightInput').value);
-    if (!v || v <= 0) { toast('Escribe tu peso'); return; }
-    await this.log('weight', v, 'kg');
-    toast('Peso registrado');
-    this.render();
-  },
-  async saveWaist() {
-    const v = parseFloat($('waistInput').value);
-    if (!v || v <= 0) { toast('Escribe tu cintura'); return; }
-    await this.log('waist', v, 'cm');
-    toast('Cintura registrada');
-    this.render();
+  async summaryBlock() {
+    const weekP = this.weekly(await this.getAll('protein'));
+    const weekW = this.weekly(await this.getAll('weight'));
+    const waists = await this.getAll('waist');
+    const notes = await this.getAll('weeknote');
+    if (!weekW.length && !weekP.length && !waists.length) return '';
+    let s = '\n--- DIETA Y COMPOSICIÓN ---\n';
+    if (weekW.length) {
+      const last = weekW[weekW.length - 1];
+      s += `  Peso: ${last.avg.toFixed(1)} kg (media semana ${last.week})`;
+      if (weekW.length >= 2) { const g = (last.avg - weekW[weekW.length - 2].avg) * 1000; s += ` · cambio ${g >= 0 ? '+' : ''}${g.toFixed(0)} g/sem`; }
+      s += '\n';
+    }
+    if (weekP.length) s += `  Proteína media última semana: ${Math.round(weekP[weekP.length - 1].avg)} g/día\n`;
+    if (waists.length) { const l = waists[waists.length - 1]; s += `  Cintura: ${l.value} cm (${l.date})\n`; }
+    const curNote = notes.find(n => n.date === getWeekStartStr());
+    if (curNote?.value) s += `  Nota de la semana: ${curNote.value}\n`;
+    return s;
   }
 };
 
@@ -2542,19 +2725,8 @@ App.claude = {
     summary += '\n--- ENTRENOS POR TIPO ---\n';
     summary += `  Gimnasio: ${modeCounts.gym || 0} · Kettlebell: ${modeCounts.kettlebell || 0} · Calistenia: ${modeCounts.calistenia || 0} · Cardio: ${modeCounts.cardio || 0}\n`;
 
-    // Nutrición reciente
-    const metrics = await DB.getAll('metrics');
-    const mBy = t => metrics.filter(m => m.type === t).sort((a, b) => a.date.localeCompare(b.date));
-    const prot = mBy('protein'), wts = mBy('weight'), wsts = mBy('waist');
-    if (prot.length || wts.length || wsts.length) {
-      summary += '\n--- NUTRICIÓN RECIENTE ---\n';
-      if (prot.length) {
-        const l7 = prot.slice(-7);
-        summary += `  Proteína media 7 días: ${Math.round(l7.reduce((a, p) => a + p.value, 0) / l7.length)} g/día (${l7.length} días con registro)\n`;
-      }
-      if (wts.length) { const l = wts[wts.length - 1]; summary += `  Peso actual: ${l.value} kg (${l.date})${wts.length > 1 ? ` · antes ${wts[wts.length - 2].value} kg` : ''}\n`; }
-      if (wsts.length) { const l = wsts[wsts.length - 1]; summary += `  Cintura: ${l.value} cm (${l.date})\n`; }
-    }
+    // Dieta y composición (resumen semanal para juzgar el ritmo de superávit)
+    summary += await App.diet.summaryBlock();
 
     summary += '\n--- RUTINAS Y PLANTILLAS ---\n';
     routines.forEach(r => {
@@ -2721,21 +2893,8 @@ App.claude = {
       goals.forEach(g => { s += `  ${exMap[g.id]?.name || g.id}: ${g.targets.map(t => `${t.months}M=${t.weight}kg`).join(', ')}\n`; });
     }
 
-    // Nutrición / métricas corporales
-    const metrics = await DB.getAll('metrics');
-    const mByType = t => metrics.filter(m => m.type === t).sort((a, b) => a.date.localeCompare(b.date));
-    const prot = mByType('protein'), wts = mByType('weight'), wsts = mByType('waist');
-    if (prot.length || wts.length || wsts.length) {
-      s += '\n===== NUTRICIÓN Y CUERPO =====\n';
-      if (prot.length) {
-        const avg = Math.round(prot.reduce((a, p) => a + p.value, 0) / prot.length);
-        const last14 = prot.slice(-14);
-        const avg14 = Math.round(last14.reduce((a, p) => a + p.value, 0) / last14.length);
-        s += `  Proteína: ${prot.length} días registrados · media ${avg} g/día (últimos 14: ${avg14} g/día)\n`;
-      }
-      if (wts.length) s += `  Peso: ${wts.map(w => `${w.date}:${w.value}kg`).join(' · ')}\n`;
-      if (wsts.length) s += `  Cintura: ${wsts.map(w => `${w.date}:${w.value}cm`).join(' · ')}\n`;
-    }
+    // Dieta y composición (agregados por semana + notas de contexto)
+    s += await App.diet.fullBlock();
 
     s += '\n===== IDs PARA EL JSON =====\n';
     s += 'Plantillas: upper_a, lower_a, upper_b, lower_b (gym) · kb_a, kb_b, kb_c · cali_a, cali_b\n';
