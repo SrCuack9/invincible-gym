@@ -361,7 +361,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.7<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.8<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -1737,6 +1737,9 @@ App.diet = {
   async setValue(type, value, unit) {
     await DB.put('metrics', {id: `${type}_${todayStr()}`, type, date: todayStr(), value, unit});
   },
+  async setValueOn(type, date, value, unit) {
+    await DB.put('metrics', {id: `${type}_${date}`, type, date, value, unit});
+  },
   proteinTarget(lastWeight) { return lastWeight ? Math.round(lastWeight * 1.9) : 130; },
   async foods() { return (await DB.get('settings', 'proteinFoods'))?.value || DEFAULT_PROTEIN_FOODS; },
 
@@ -1819,8 +1822,9 @@ App.diet = {
           <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="+ g extra" style="flex:1">
           <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManual()">Añadir</button>
         </div>
-        <div class="flex-between mt-8">
+        <div class="mt-8" style="display:flex;flex-wrap:wrap;gap:12px">
           <button class="btn-link" onclick="App.diet.correctToday()">Corregir total</button>
+          <button class="btn-link" onclick="App.diet.editProteinDays()">Editar días anteriores</button>
           <button class="btn-link" onclick="App.diet.manageFoods()">Editar alimentos</button>
         </div>
       </div>
@@ -1898,6 +1902,48 @@ App.diet = {
     const v = parseFloat(ans);
     if (isNaN(v) || v < 0) { toast('Número no válido'); return; }
     await this.setValue('protein', Math.round(v * 10) / 10, 'g');
+    this.render();
+  },
+  // Editar la proteína de cualquier día pasado
+  async editProteinDays() {
+    const protein = await this.getAll('protein');
+    let html = '<h2>Proteína por día</h2><p class="text-sm mb-12" style="color:var(--text2)">Elige la fecha, pon los gramos totales de ese día y guarda.</p>';
+    html += `<div style="display:flex;gap:6px">
+      <input type="date" class="input" id="pDayDate" max="${todayStr()}" value="${todayStr()}" style="flex:2">
+      <input type="number" inputmode="numeric" class="input" id="pDayVal" placeholder="g" style="flex:1">
+      <button class="btn btn-primary" style="width:auto" onclick="App.diet.saveProteinDay()">Guardar</button>
+    </div>`;
+    if (protein.length) {
+      html += '<p class="text-sm fw-700 mt-12 mb-8" style="color:var(--gold)">Días registrados</p>';
+      protein.slice().reverse().forEach(p => {
+        html += `<div class="ex-list-item">
+          <span class="eli-name">${formatDate(p.date)}</span>
+          <span class="eli-cat">${Math.round(p.value)} g</span>
+          <button onclick="App.diet.pickProteinDay('${p.date}',${p.value})" title="Editar">&#9998;</button>
+          <button onclick="App.diet.deleteProteinDay('${p.date}')" title="Borrar">&#10005;</button>
+        </div>`;
+      });
+    }
+    App.modal.open(html);
+  },
+  pickProteinDay(date, value) {
+    if ($('pDayDate')) $('pDayDate').value = date;
+    if ($('pDayVal')) $('pDayVal').value = Math.round(value);
+  },
+  async saveProteinDay() {
+    const date = $('pDayDate').value;
+    const v = parseFloat($('pDayVal').value);
+    if (!date) { toast('Elige una fecha'); return; }
+    if (isNaN(v) || v < 0) { toast('Gramos no válidos'); return; }
+    await this.setValueOn('protein', date, Math.round(v * 10) / 10, 'g');
+    toast('Guardado');
+    this.editProteinDays();
+    this.render();
+  },
+  async deleteProteinDay(date) {
+    if (!confirm(`¿Borrar la proteína de ${formatDate(date)}?`)) return;
+    await DB.del('metrics', 'protein_' + date);
+    this.editProteinDays();
     this.render();
   },
   // Añadir un alimento a mano y guardarlo como chip (y sumarlo hoy) de un toque
@@ -2825,14 +2871,15 @@ App.claude = {
     s += '>> luego hazme el CUESTIONARIO de datos personales, y solo después analiza y propón. Sé sincero.\n';
 
     // 1) Glosario: qué trabaja cada ejercicio (clave para que el Coach lo entienda)
-    s += '\n===== GLOSARIO DE EJERCICIOS (qué músculo trabaja cada uno) =====\n';
+    s += '\n===== GLOSARIO DE EJERCICIOS (usa el id EXACTO en el JSON) =====\n';
+    s += 'Formato: exerciseId — Nombre — músculo — tipo. En "routines" del JSON usa SIEMPRE el exerciseId (la primera columna), nunca el nombre.\n';
     const byCat = {};
     exercises.forEach(e => { (byCat[e.category] = byCat[e.category] || []).push(e); });
     Object.keys(byCat).sort().forEach(cat => {
       const mg = MUSCLE_GROUPS[cat] || {name: cat};
       s += `\n[${mg.name}]\n`;
       byCat[cat].sort((a, b) => a.name.localeCompare(b.name)).forEach(e => {
-        s += `  ${e.name} — ${e.isCompound ? 'compuesto' : 'accesorio'}${e.equip ? ' · ' + e.equip : ''}${e.desc ? ' · ' + e.desc : ''}\n`;
+        s += `  ${e.id} — ${e.name} — ${mg.name} — ${e.isCompound ? 'compuesto' : 'accesorio'}${e.equip ? ' · ' + e.equip : ''}${e.desc ? ' · ' + e.desc : ''}\n`;
       });
     });
 
