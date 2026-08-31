@@ -361,7 +361,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.8<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v3.9<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -1103,13 +1103,18 @@ App.home = {
     return planData ? planData.value : null;
   },
 
+  // Una semana está "terminada" cuando todos sus días NO opcionales están completados.
+  planWeekComplete(week) {
+    const req = (week.workouts || []).filter(w => !w.optional);
+    return req.length > 0 && req.every(w => w.completed);
+  },
+  // Semana actual = primera semana no terminada (avanza por PROGRESO, no por fecha).
+  // Así entrenar irregular no bloquea el plan.
   getCurrentWeekIndex(plan) {
-    const start = new Date(plan.startDate + 'T00:00:00');
-    const now = new Date();
-    now.setHours(0,0,0,0);
-    const diffDays = Math.floor((now - start) / (24*60*60*1000));
-    if (diffDays < 0) return 0;
-    return Math.floor(diffDays / 7);
+    for (let i = 0; i < plan.weeks.length; i++) {
+      if (!this.planWeekComplete(plan.weeks[i])) return i;
+    }
+    return plan.weeks.length;
   },
 
   async renderPlan(plan) {
@@ -1130,46 +1135,41 @@ App.home = {
       return;
     }
 
-    plan.weeks.forEach((week, wi) => {
-      if (wi < currentWeekIdx - 1) return;
-      const isCurrent = wi === currentWeekIdx;
-      const isPast = wi < currentWeekIdx;
-      const isFuture = wi > currentWeekIdx;
+    // Resumen de semanas ya terminadas (para no llenar la pantalla)
+    if (currentWeekIdx > 0) {
+      html += `<div class="text-sm" style="color:var(--text3);margin-bottom:8px">&#10003; ${currentWeekIdx} semana${currentWeekIdx > 1 ? 's' : ''} completada${currentWeekIdx > 1 ? 's' : ''}</div>`;
+    }
 
-      if (isFuture && wi > currentWeekIdx + 1) return;
+    // Muestra la semana actual Y la siguiente, ambas accesibles y clicables.
+    [currentWeekIdx, currentWeekIdx + 1].forEach(wi => {
+      if (wi >= plan.weeks.length) return;
+      const week = plan.weeks[wi];
+      const isCurrent = wi === currentWeekIdx;
 
       html += `<div class="plan-week" style="${isCurrent ? 'border-color:var(--gold)' : ''}">`;
-      html += `<div class="plan-week-label">${week.label || 'Semana ' + (wi + 1)}${isCurrent ? ' <span style="color:var(--green);font-size:12px">(actual)</span>' : ''}${isPast ? ' <span style="color:var(--text3);font-size:12px">(pasada)</span>' : ''}${isFuture ? ' <span style="color:var(--text3);font-size:12px">(próxima)</span>' : ''}</div>`;
+      html += `<div class="plan-week-label">${week.label || 'Semana ' + (wi + 1)}${isCurrent ? ' <span style="color:var(--green);font-size:12px">(actual)</span>' : ' <span style="color:var(--text3);font-size:12px">(siguiente)</span>'}</div>`;
       if (week.note) html += `<div class="plan-week-note">${week.note}</div>`;
 
       (week.workouts || []).forEach((pw, pwi) => {
         const routine = routineMap[pw.routineId];
         const name = routine ? routine.name : pw.routineId;
-        const isCompleted = pw.completed;
         const subl = `${pw.label || ''}${pw.optional ? (pw.label ? ' · ' : '') + 'opcional' : ''}`;
 
-        if (isCurrent && !isCompleted) {
-          html += `<div class="plan-workout">
-            <div style="flex:1" onclick="App.workout.start('${pw.routineId}')"><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
-            <span class="badge" style="background:${pw.optional ? 'var(--bg4)' : 'var(--gold)'};color:${pw.optional ? 'var(--text2)' : '#000'}">${pw.optional ? 'Opcional' : 'Pendiente'}</span>
-            <button class="pw-del" onclick="App.home.removeFromWeek(${wi},${pwi})" title="Quitar de la semana">&#10005;</button>
-          </div>`;
-        } else if (isCompleted) {
+        if (pw.completed) {
           html += `<div class="plan-workout completed">
             <div><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
             <span class="badge badge-green">&#10003; Hecho</span>
           </div>`;
         } else {
-          html += `<div class="plan-workout" style="opacity:.4;cursor:default">
-            <div><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
+          html += `<div class="plan-workout">
+            <div style="flex:1" onclick="App.workout.start('${pw.routineId}')"><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
+            <span class="badge" style="background:${pw.optional ? 'var(--bg4)' : isCurrent ? 'var(--gold)' : 'var(--bg4)'};color:${pw.optional || !isCurrent ? 'var(--text2)' : '#000'}">${pw.optional ? 'Opcional' : isCurrent ? 'Pendiente' : 'Disponible'}</span>
+            <button class="pw-del" onclick="App.home.removeFromWeek(${wi},${pwi})" title="Quitar de la semana">&#10005;</button>
           </div>`;
         }
       });
 
-      if (isCurrent) {
-        html += `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:4px" onclick="App.home.addToWeek(${wi})">+ Añadir día a esta semana</button>`;
-      }
-
+      html += `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:4px" onclick="App.home.addToWeek(${wi})">+ Añadir día</button>`;
       html += '</div>';
     });
 
@@ -1651,12 +1651,17 @@ App.workout = {
     const plan = planData.value;
     const weekIdx = App.home.getCurrentWeekIndex(plan);
     if (weekIdx < 0 || weekIdx >= plan.weeks.length) return;
-    const week = plan.weeks[weekIdx];
-    const pending = (week.workouts || []).find(w => w.routineId === routineId && !w.completed);
-    if (pending) {
-      pending.completed = true;
-      pending.workoutId = workoutId;
-      await DB.put('settings', planData);
+    // Busca el día pendiente en la semana actual y en la siguiente (ambas disponibles)
+    for (const wi of [weekIdx, weekIdx + 1]) {
+      const week = plan.weeks[wi];
+      if (!week) continue;
+      const pending = (week.workouts || []).find(w => w.routineId === routineId && !w.completed);
+      if (pending) {
+        pending.completed = true;
+        pending.workoutId = workoutId;
+        await DB.put('settings', planData);
+        return;
+      }
     }
   },
 
