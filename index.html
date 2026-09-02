@@ -362,7 +362,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.2<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.3<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -1126,7 +1126,16 @@ App.home = {
     const currentWeekIdx = this.getCurrentWeekIndex(plan);
     let html = '';
 
-    if (currentWeekIdx >= plan.weeks.length) {
+    // Semanas a mostrar: la ANTERIOR si aún tiene días pendientes (p.ej. un opcional
+    // sin hacer), la ACTUAL y la SIGUIENTE. Así completar los obligatorios no te quita
+    // el opcional que querías hacer más tarde en la semana.
+    const toShow = [];
+    const prev = currentWeekIdx - 1;
+    if (prev >= 0 && (plan.weeks[prev].workouts || []).some(w => !w.completed)) toShow.push(prev);
+    if (currentWeekIdx < plan.weeks.length) toShow.push(currentWeekIdx);
+    if (currentWeekIdx + 1 < plan.weeks.length) toShow.push(currentWeekIdx + 1);
+
+    if (toShow.length === 0) {
       html += `<div class="card"><div class="card-title">Plan completado</div>
         <p class="text-sm" style="color:var(--text2)">Has terminado todas las semanas del plan. Pide uno nuevo a tu entrenador.</p>
         <button class="btn btn-secondary mt-12" onclick="App.home.clearPlan()">Quitar plan</button></div>`;
@@ -1136,22 +1145,26 @@ App.home = {
       return;
     }
 
-    // Resumen de semanas ya terminadas (para no llenar la pantalla)
-    if (currentWeekIdx > 0) {
-      html += `<div class="text-sm" style="color:var(--text3);margin-bottom:8px">&#10003; ${currentWeekIdx} semana${currentWeekIdx > 1 ? 's' : ''} completada${currentWeekIdx > 1 ? 's' : ''}</div>`;
+    const firstShown = toShow[0];
+    if (firstShown > 0) {
+      html += `<div class="text-sm" style="color:var(--text3);margin-bottom:8px">&#10003; ${firstShown} semana${firstShown > 1 ? 's' : ''} completada${firstShown > 1 ? 's' : ''}</div>`;
     }
 
-    // Muestra la semana actual Y la siguiente, ambas accesibles y clicables.
-    [currentWeekIdx, currentWeekIdx + 1].forEach(wi => {
-      if (wi >= plan.weeks.length) return;
+    toShow.forEach(wi => {
       const week = plan.weeks[wi];
       const isCurrent = wi === currentWeekIdx;
+      const isPrev = wi < currentWeekIdx;
+      const tag = isCurrent ? '<span style="color:var(--green);font-size:12px">(actual)</span>'
+        : isPrev ? '<span style="color:var(--gold);font-size:12px">(pendiente de antes)</span>'
+        : '<span style="color:var(--text3);font-size:12px">(siguiente)</span>';
 
       html += `<div class="plan-week" style="${isCurrent ? 'border-color:var(--gold)' : ''}">`;
-      html += `<div class="plan-week-label">${week.label || 'Semana ' + (wi + 1)}${isCurrent ? ' <span style="color:var(--green);font-size:12px">(actual)</span>' : ' <span style="color:var(--text3);font-size:12px">(siguiente)</span>'}</div>`;
-      if (week.note) html += `<div class="plan-week-note">${week.note}</div>`;
+      html += `<div class="plan-week-label">${week.label || 'Semana ' + (wi + 1)} ${tag}</div>`;
+      if (week.note && !isPrev) html += `<div class="plan-week-note">${week.note}</div>`;
 
       (week.workouts || []).forEach((pw, pwi) => {
+        // En semanas pasadas solo enseñamos lo que quedó pendiente (los hechos ya no importan)
+        if (isPrev && pw.completed) return;
         const routine = routineMap[pw.routineId];
         const name = routine ? routine.name : pw.routineId;
         const subl = `${pw.label || ''}${pw.optional ? (pw.label ? ' · ' : '') + 'opcional' : ''}`;
@@ -1162,15 +1175,17 @@ App.home = {
             <span class="badge badge-green">&#10003; Hecho</span>
           </div>`;
         } else {
+          const badgeTxt = pw.optional ? 'Opcional' : isCurrent ? 'Pendiente' : 'Disponible';
+          const strong = !pw.optional && isCurrent;
           html += `<div class="plan-workout">
             <div style="flex:1" onclick="App.workout.start('${pw.routineId}')"><div class="pw-name">${name}</div><div class="pw-label">${subl}</div></div>
-            <span class="badge" style="background:${pw.optional ? 'var(--bg4)' : isCurrent ? 'var(--gold)' : 'var(--bg4)'};color:${pw.optional || !isCurrent ? 'var(--text2)' : '#000'}">${pw.optional ? 'Opcional' : isCurrent ? 'Pendiente' : 'Disponible'}</span>
+            <span class="badge" style="background:${strong ? 'var(--gold)' : 'var(--bg4)'};color:${strong ? '#000' : 'var(--text2)'}">${badgeTxt}</span>
             <button class="pw-del" onclick="App.home.removeFromWeek(${wi},${pwi})" title="Quitar de la semana">&#10005;</button>
           </div>`;
         }
       });
 
-      html += `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:4px" onclick="App.home.addToWeek(${wi})">+ Añadir día</button>`;
+      if (!isPrev) html += `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:4px" onclick="App.home.addToWeek(${wi})">+ Añadir día</button>`;
       html += '</div>';
     });
 
@@ -1652,8 +1667,9 @@ App.workout = {
     const plan = planData.value;
     const weekIdx = App.home.getCurrentWeekIndex(plan);
     if (weekIdx < 0 || weekIdx >= plan.weeks.length) return;
-    // Busca el día pendiente en la semana actual y en la siguiente (ambas disponibles)
-    for (const wi of [weekIdx, weekIdx + 1]) {
+    // Busca el día pendiente en la semana actual, la siguiente y la anterior
+    // (esta última por si quedó un opcional sin hacer). Prioriza la actual.
+    for (const wi of [weekIdx, weekIdx + 1, weekIdx - 1]) {
       const week = plan.weeks[wi];
       if (!week) continue;
       const pending = (week.workouts || []).find(w => w.routineId === routineId && !w.completed);
@@ -3162,14 +3178,24 @@ App.repair = {
       goalPlan.push({targetId: t, name: nameById[t] || t, keep: best, dropIds: gs.map(g => g.id).filter(id => id !== t || best.id !== t)});
     });
 
-    return {routines, goals, remap, toDelete: [...toDelete], merges, routineFix, goalPlan, unresolved};
+    // 4) Entrenos del historial cuyo ejercicio quedó "huérfano" (id roto) -> re-vincular
+    const workouts = await DB.getAll('workouts');
+    let workoutFixCount = 0;
+    workouts.forEach(w => {
+      (w.exercises || []).forEach(ex => {
+        const t = this.resolve(ex.exerciseId, ctx);
+        if (t && t !== ex.exerciseId) workoutFixCount++;
+      });
+    });
+
+    return {routines, goals, remap, toDelete: [...toDelete], merges, routineFix, goalPlan, unresolved, ctx, nameById, workoutFixCount};
   },
 
   async show() {
     const s = await this.scan();
-    const nMerge = s.toDelete.length, nOrphan = Object.keys(s.routineFix).length, nGoals = s.goalPlan.length, nUnres = s.unresolved.length;
+    const nMerge = s.toDelete.length, nOrphan = Object.keys(s.routineFix).length, nGoals = s.goalPlan.length, nUnres = s.unresolved.length, nWk = s.workoutFixCount;
     let html = '<h2>Revisar datos</h2>';
-    if (!nMerge && !nOrphan && !nGoals && !nUnres) {
+    if (!nMerge && !nOrphan && !nGoals && !nUnres && !nWk) {
       html += '<p class="text-sm" style="color:var(--green)">&#10003; Todo limpio: sin duplicados ni referencias rotas.</p>';
       App.modal.open(html);
       return;
@@ -3186,12 +3212,16 @@ App.repair = {
       html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Objetivos duplicados o mal referenciados (${nGoals})</p>`;
       s.goalPlan.forEach(p => { html += `<div class="text-sm" style="color:var(--text2)">• <b>${p.name}</b>: se unifica en 1 objetivo${p.dropIds.length ? ` (quita ${p.dropIds.length})` : ''}</div>`; });
     }
+    if (s.workoutFixCount) {
+      html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Entrenos del historial a re-vincular (${s.workoutFixCount})</p>`;
+      html += `<div class="text-sm" style="color:var(--text2)">Se corrige el ejercicio de esos registros para que "última vez" y la progresión vuelvan a contar bien.</div>`;
+    }
     if (nUnres) {
       html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--red)">No he podido resolver (${nUnres})</p>`;
       s.unresolved.forEach(u => { html += `<div class="text-sm" style="color:var(--text2)">• "${u.id}" (${u.where})</div>`; });
       html += `<p class="text-sm mt-4" style="color:var(--text3)">Pásame estos nombres por el chat y te digo a qué ejercicio corregirlos.</p>`;
     }
-    if (nMerge || nOrphan || nGoals) {
+    if (nMerge || nOrphan || nGoals || nWk) {
       html += `<button class="btn btn-primary mt-12" onclick="App.repair.apply()">Aplicar arreglos</button>`;
     }
     html += `<p class="text-sm mt-8" style="color:var(--text3)">No se borra ningún entreno del historial.</p>`;
@@ -3218,10 +3248,21 @@ App.repair = {
       await DB.put('goals', {id: p.targetId, targets: p.keep.targets || [], setDate: p.keep.setDate || todayStr()});
       goalsFixed++;
     }
+    // Entrenos del historial: re-vincular ejercicios huérfanos a su id/nombre real
+    let wkFixed = 0;
+    const workouts = await DB.getAll('workouts');
+    for (const w of workouts) {
+      let changed = false;
+      (w.exercises || []).forEach(ex => {
+        const t = this.resolve(ex.exerciseId, s.ctx);
+        if (t && t !== ex.exerciseId) { ex.exerciseId = t; ex.name = s.nameById[t] || ex.name; changed = true; }
+      });
+      if (changed) { await DB.put('workouts', w); wkFixed++; }
+    }
     // Borrar ejercicios duplicados
     for (const id of s.toDelete) await DB.del('exercises', id);
     App.modal.forceClose();
-    toast(`Reparado: ${s.toDelete.length} ejercicios, ${Object.keys(s.routineFix).length} rutinas, ${goalsFixed} objetivos`);
+    toast(`Reparado: ${s.toDelete.length} ejercicios, ${Object.keys(s.routineFix).length} rutinas, ${goalsFixed} objetivos, ${wkFixed} entrenos`);
     App.home.render();
   }
 };
