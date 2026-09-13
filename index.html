@@ -362,7 +362,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.3<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.4<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -2793,7 +2793,6 @@ App.claude = {
     const goals = await DB.getAll('goals');
     const planData = await DB.get('settings', 'trainingPlan');
 
-    const last8 = workouts.slice(-8);
     const exMap = {};
     exercises.forEach(e => exMap[e.id] = e);
 
@@ -2803,8 +2802,14 @@ App.claude = {
 
     const modeTag = m => m === 'kettlebell' ? '[KB] ' : m === 'calistenia' ? '[CALI] ' : m === 'cardio' ? '[CARDIO] ' : '';
 
-    summary += '--- ÚLTIMOS 10 ENTRENOS ---\n';
-    workouts.slice(-10).forEach(w => {
+    // Entrenos por FECHA (últimas 5 semanas), no por número fijo: así cubre el mes
+    // aunque le pases el resumen al final. Mínimo los últimos 8 por si entrenaste poco.
+    const cut = new Date(); cut.setDate(cut.getDate() - 35);
+    const cutStr = cut.toISOString().split('T')[0];
+    const recent = workouts.filter(w => w.date >= cutStr);
+    const detail = recent.length >= 8 ? recent : workouts.slice(-8);
+    summary += `--- ENTRENOS DE LAS ÚLTIMAS 5 SEMANAS (${detail.length}) ---\n`;
+    detail.forEach(w => {
       summary += `\n[${w.date}] ${modeTag(w.mode)}${w.routineName}\n`;
       if (w.mode === 'cardio') {
         const c = w.cardio || {};
