@@ -71,6 +71,11 @@ body{display:flex;flex-direction:column}
 .food-chip:active{transform:scale(.95);border-color:var(--gold)}
 .food-chip b{color:var(--gold)}
 .food-chip-add{border-style:dashed;color:var(--text2)}
+.food-chip.sel{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700}
+.semaforo{font-size:12px;font-weight:600;padding:5px 8px;border-radius:6px;margin:2px 0 8px}
+.semaforo.sem-green{background:rgba(39,174,96,.15);color:#2ecc71}
+.semaforo.sem-amber{background:rgba(245,166,35,.15);color:var(--gold)}
+.semaforo.sem-red{background:rgba(231,76,60,.15);color:#e74c3c}
 .btn-link{background:none;border:none;color:var(--gold);font-size:12px;cursor:pointer;padding:2px 4px;text-decoration:underline}
 .kb-prog-ex{padding:8px 0;border-bottom:1px solid var(--bg3)}
 .kb-prog-ex:last-child{border-bottom:none}
@@ -362,7 +367,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.4<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.5<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -421,6 +426,7 @@ const MUSCLE_GROUPS = {
   'Biceps': {name:'Bíceps',min:6,max:14,color:'#2ecc71'},
   'Triceps': {name:'Tríceps',min:6,max:14,color:'#9b59b6'},
   'Legs': {name:'Piernas',min:14,max:22,color:'#1abc9c'},
+  'Calves': {name:'Gemelos',min:8,max:16,color:'#16a085'},
   'Abs': {name:'Abdominales',min:6,max:15,color:'#e67e22'},
   'Cardio': {name:'Cardio',min:0,max:0,color:'#95a5a6'},
 };
@@ -472,8 +478,8 @@ const DEFAULT_EXERCISES = [
   {id:'leg_ext_uni',name:'Leg Extensión Unilateral',category:'Legs',isCompound:false},
   {id:'leg_curl',name:'Leg Curl',category:'Legs',isCompound:false},
   {id:'leg_curl_uni',name:'Leg Curl Unilateral',category:'Legs',isCompound:false},
-  {id:'gemelos_prensa',name:'Gemelos En Prensa Sentado',category:'Legs',isCompound:false},
-  {id:'soleo',name:'Soleo',category:'Legs',isCompound:false},
+  {id:'gemelos_prensa',name:'Gemelos En Prensa Sentado',category:'Calves',isCompound:false},
+  {id:'soleo',name:'Soleo',category:'Calves',isCompound:false},
   {id:'abductores',name:'Abductores',category:'Legs',isCompound:false},
   {id:'adductores',name:'Adductores',category:'Legs',isCompound:false},
   {id:'levantar_piernas',name:'Levantar Piernas',category:'Abs',isCompound:false},
@@ -1312,6 +1318,7 @@ App.workout = {
       this.timerInterval = setInterval(() => this.updateTimer(), 1000);
       $('workoutTitle').textContent = this.active.routineName;
       this.render();
+      this.refreshSemaforo();
       return true;
     } catch(e) {
       localStorage.removeItem('gym_autosave');
@@ -1365,6 +1372,7 @@ App.workout = {
     this.timerInterval = setInterval(() => this.updateTimer(), 1000);
     $('workoutTitle').textContent = routine.name;
     this.render();
+    this.refreshSemaforo();
     this.autoSave();
 
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1395,11 +1403,50 @@ App.workout = {
     return out;
   },
 
+  // Semáforo por ejercicio: mira las 2 últimas sesiones NO marcadas como "día malo".
+  // Verde = subir peso · Ámbar = repetir a por reps · Rojo = bajar (2 sesiones seguidas por debajo).
+  async computeSemaforo() {
+    this._semaforo = {};
+    if (!this.active) return;
+    const workouts = (await DB.getAll('workouts')).slice().sort((a, b) => b.date.localeCompare(a.date));
+    const classify = (done, ex) => {
+      const total = done.reduce((a, s) => a + (s.reps || 0), 0);
+      const minR = Math.min(...done.map(s => s.reps || 0));
+      if (total >= ex.targetSets * ex.targetRepsMax - 2) return 'green';
+      if (minR >= ex.targetRepsMin) return 'amber';
+      return 'red';
+    };
+    for (const ex of this.active.exercises) {
+      const hist = [];
+      for (const w of workouts) {
+        if (w.readiness && w.readiness.badDay) continue;
+        const e = (w.exercises || []).find(x => x.exerciseId === ex.exerciseId);
+        if (!e) continue;
+        const done = e.sets.filter(s => s.done);
+        if (!done.length) continue;
+        hist.push(done);
+        if (hist.length >= 2) break;
+      }
+      if (!hist.length) continue;
+      const c1 = classify(hist[0], ex);
+      const c2 = hist[1] ? classify(hist[1], ex) : null;
+      let state = 'amber';
+      if (c1 === 'green' || c2 === 'green') state = 'green';         // mejor de las dos últimas
+      else if (c1 === 'red' && c2 === 'red') state = 'red';          // dos seguidas por debajo
+      this._semaforo[ex.exerciseId] = state;
+    }
+  },
+  async refreshSemaforo() {
+    await this.computeSemaforo();
+    if (this.active) this.render();
+  },
+
   _enterWorkoutScreen() {
     this.startTime = Date.now();
     this.timerInterval = setInterval(() => this.updateTimer(), 1000);
     $('workoutTitle').textContent = this.active.routineName;
     this.render();
+    this.refreshSemaforo();
     this.autoSave();
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $('screenWorkout').classList.add('active');
@@ -1497,6 +1544,7 @@ App.workout = {
             </div>
           </div>
           ${ex.desc ? `<div class="ex-desc">${ex.desc}</div>` : ''}
+          ${(() => { const st = this._semaforo && this._semaforo[ex.exerciseId]; if (!st) return ''; const m = {green:['🟢','Listo para subir peso'], amber:['🟡','Repite peso, a por más reps'], red:['🔴','Baja un escalón o descansa']}[st]; return `<div class="semaforo sem-${st}">${m[0]} ${m[1]}</div>`; })()}
           <div class="set-header"><span>#</span><span>PESO (kg)</span><span>REPS</span><span></span><span></span></div>
           ${setsHtml}
           <textarea class="ex-comment" rows="1" placeholder="Notas para tu entrenador..."
@@ -1631,6 +1679,7 @@ App.workout = {
     });
     this.autoSave();
     this.render();
+    this.refreshSemaforo();
     toast(`${e.name} añadido`);
   },
 
@@ -1638,12 +1687,47 @@ App.workout = {
     if (!this.active) return;
     const anyDone = this.active.exercises.some(ex => ex.sets.some(s => s.done));
     if (!anyDone && !confirm('No has marcado ninguna serie como completada. ¿Guardar igualmente?')) return;
+    this._showReadiness();
+  },
+
+  // Lectura del día: energía, sueño y "día malo" (para el semáforo del entrenador)
+  _showReadiness() {
+    const r = this.active.readiness || {};
+    App.modal.open(`
+      <h2>¿Cómo ha ido?</h2>
+      <p class="text-sm mb-8" style="color:var(--text2)">Energía de hoy (1 fatal · 5 genial):</p>
+      <div class="food-chips">${[1,2,3,4,5].map(n => `<button class="food-chip ${r.energy === n ? 'sel' : ''}" onclick="App.workout._setEnergy(${n})">${n}</button>`).join('')}</div>
+      <div class="input-group mt-12"><label>Horas de sueño (opcional)</label><input type="number" inputmode="decimal" step="0.5" class="input" id="sleepInput" value="${r.sleep || ''}"></div>
+      <label class="text-sm" style="display:flex;align-items:center;gap:8px;color:var(--text2)"><input type="checkbox" id="badDayInput" ${r.badDay ? 'checked' : ''}> Día malo (no cuenta para el semáforo)</label>
+      <button class="btn btn-primary mt-12" onclick="App.workout.confirmFinish()">Guardar entreno</button>
+      <div class="text-center mt-8"><button class="btn-link" onclick="App.workout.confirmFinish(true)">Guardar sin anotar</button></div>
+    `);
+  },
+  _setEnergy(n) {
+    this.active.readiness = this.active.readiness || {};
+    this.active.readiness.energy = n;
+    if ($('sleepInput')) this.active.readiness.sleep = parseFloat($('sleepInput').value) || null;
+    if ($('badDayInput')) this.active.readiness.badDay = $('badDayInput').checked;
+    this.autoSave();
+    this._showReadiness();
+  },
+  async confirmFinish(skip) {
+    if (!this.active) return;
+    let readiness = null;
+    if (!skip) {
+      const energy = this.active.readiness?.energy || null;
+      const sleep = parseFloat(($('sleepInput') || {}).value) || null;
+      const badDay = !!(($('badDayInput') || {}).checked) || (energy !== null && energy <= 2);
+      readiness = {energy, sleep, badDay};
+    }
     clearInterval(this.timerInterval);
     App.timer.stop();
     const workoutId = uid();
+    const routineId = this.active.routineId, mode = this.active.mode || 'gym';
     const workout = {
       ...this.active,
-      mode: this.active.mode || 'gym',
+      mode,
+      readiness,
       id: workoutId,
       duration: Math.floor((Date.now() - this.startTime) / 1000),
     };
@@ -1651,12 +1735,13 @@ App.workout = {
 
     // Marca el día del plan como completado si coincide con una plantilla (cualquier modo).
     // Las sesiones libres (free_*) y el cardio no cuentan para el plan → quedan como "extra".
-    if (this.active.routineId && !this.active.routineId.startsWith('free_') && this.active.mode !== 'cardio') {
-      await this.updatePlan(this.active.routineId, workoutId);
+    if (routineId && !routineId.startsWith('free_') && mode !== 'cardio') {
+      await this.updatePlan(routineId, workoutId);
     }
 
     this.active = null;
     localStorage.removeItem('gym_autosave');
+    App.modal.forceClose();
     toast('Entreno guardado!');
     App.nav('screenHome');
   },
@@ -1745,6 +1830,12 @@ App.kbProgram = {
 // ============================================================
 // DIETA / MÉTRICAS (proteína diaria, peso semanal, cintura mensual)
 // ============================================================
+const BODY_MEASURES = [
+  {type:'m_chest', name:'Pecho'},
+  {type:'m_arm', name:'Brazo'},
+  {type:'m_thigh', name:'Muslo'},
+  {type:'m_calf', name:'Gemelo'},
+];
 const DEFAULT_PROTEIN_FOODS = [
   {name:'Batido', g:25}, {name:'Atún lata', g:12.6}, {name:'Huevo', g:6},
   {name:'Pollo 100g', g:31}, {name:'Yogur griego', g:10}, {name:'Pavo loncha', g:5},
@@ -1845,6 +1936,16 @@ App.diet = {
       `<button class="food-chip" onclick="App.diet.addFood(${i})">${f.name} <b>+${f.g}</b></button>`
     ).join('') + `<button class="food-chip food-chip-add" onclick="App.diet.quickAddFood()">+ Nuevo</button>`;
 
+    // Medidas corporales
+    let measuresHtml = '';
+    for (const m of BODY_MEASURES) {
+      const arr = await this.getAll(m.type);
+      const last = arr.length ? arr[arr.length - 1] : null;
+      let delta = '';
+      if (arr.length >= 2) { const d = last.value - arr[arr.length - 2].value; delta = ` <span style="color:${d > 0 ? 'var(--green)' : d < 0 ? 'var(--gold)' : 'var(--text3)'}">(${d >= 0 ? '+' : ''}${d.toFixed(1)})</span>`; }
+      measuresHtml += `<div class="flex-between" style="padding:5px 0;border-bottom:1px solid var(--bg3)"><span class="text-sm">${m.name}</span><span class="text-sm">${last ? `<b>${last.value}</b> cm${delta} <span style="color:var(--text3);font-size:11px">${formatDate(last.date)}</span>` : '<span style="color:var(--text3)">sin registro</span>'}</span></div>`;
+    }
+
     // Peso: media móvil 7 días (número grande) + medición del día (pequeño)
     const wMA = this.movingAvg(weights, 7);
     const weekW = this.weekly(weights);
@@ -1899,6 +2000,12 @@ App.diet = {
           <input type="number" inputmode="decimal" step="0.5" class="input" id="waistInput" placeholder="cm" style="flex:1">
           <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWaist()">Registrar</button>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Medidas corporales (mensual)</div><button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 10px" onclick="App.diet.showMeasures()">Registrar</button></div>
+        <p class="text-sm mb-8 mt-8" style="color:var(--text3)">Mídete en las mismas condiciones (relajado, sin bombear). Gemelo y muslo son la mejor prueba de que crecen.</p>
+        ${measuresHtml}
       </div>
 
       <div class="card">
@@ -2083,6 +2190,28 @@ App.diet = {
     toast('Cintura registrada');
     this.render();
   },
+  async showMeasures() {
+    const types = [...BODY_MEASURES, {type: 'waist', name: 'Cintura'}];
+    let html = '<h2>Medidas del mes (cm)</h2><p class="text-sm mb-12" style="color:var(--text2)">Rellena lo que quieras. Se guarda con la fecha de hoy. Mídete relajado y siempre igual.</p>';
+    for (const t of types) {
+      const arr = await this.getAll(t.type);
+      const last = arr.length ? arr[arr.length - 1].value : '';
+      html += `<div class="input-group"><label>${t.name}${last !== '' ? ` (última: ${last})` : ''}</label><input type="number" inputmode="decimal" step="0.1" class="input" id="meas_${t.type}" placeholder="cm"></div>`;
+    }
+    html += `<button class="btn btn-primary mt-8" onclick="App.diet.saveMeasures()">Guardar medidas</button>`;
+    App.modal.open(html);
+  },
+  async saveMeasures() {
+    const types = [...BODY_MEASURES, {type: 'waist', name: 'Cintura'}];
+    let n = 0;
+    for (const t of types) {
+      const v = parseFloat(($('meas_' + t.type) || {}).value);
+      if (v && v > 0) { await this.setValue(t.type, v, 'cm'); n++; }
+    }
+    App.modal.forceClose();
+    toast(n ? `${n} medidas guardadas` : 'Nada que guardar');
+    this.render();
+  },
   async saveNote(text) {
     const wk = getWeekStartStr();
     await DB.put('metrics', {id: 'weeknote_' + wk, type: 'weeknote', date: wk, value: text.trim()});
@@ -2108,7 +2237,10 @@ App.diet = {
     const weekW = this.weekly(await this.getAll('weight'));
     const waists = await this.getAll('waist');
     const notes = await this.getAll('weeknote');
-    if (!weekP.length && !weekW.length && !waists.length && !notes.length) return '';
+    const measures = {};
+    for (const m of BODY_MEASURES) measures[m.type] = await this.getAll(m.type);
+    const anyMeasure = BODY_MEASURES.some(m => measures[m.type].length);
+    if (!weekP.length && !weekW.length && !waists.length && !notes.length && !anyMeasure) return '';
     let s = '\n===== DIETA Y COMPOSICIÓN =====\n';
     if (weekW.length) {
       s += 'Peso medio por semana (kg):\n';
@@ -2117,6 +2249,11 @@ App.diet = {
     }
     if (weekP.length) { s += 'Proteína media por semana (g/día):\n'; weekP.forEach(w => { s += `  ${w.week}: ${Math.round(w.avg)} (${w.n} días con registro)\n`; }); }
     if (waists.length) s += 'Cintura (cm): ' + waists.map(w => `${w.date}:${w.value}`).join(' · ') + '\n';
+    // Medidas corporales (serie completa por medida)
+    for (const m of BODY_MEASURES) {
+      const arr = measures[m.type];
+      if (arr.length) s += `${m.name} (cm): ` + arr.map(w => `${w.date}:${w.value}`).join(' · ') + '\n';
+    }
     if (notes.some(n => n.value)) { s += 'Notas de contexto por semana:\n'; notes.forEach(n => { if (n.value) s += `  ${n.date}: ${n.value}\n`; }); }
     return s;
   },
@@ -2125,7 +2262,10 @@ App.diet = {
     const weekW = this.weekly(await this.getAll('weight'));
     const waists = await this.getAll('waist');
     const notes = await this.getAll('weeknote');
-    if (!weekW.length && !weekP.length && !waists.length) return '';
+    const measures = {};
+    for (const m of BODY_MEASURES) measures[m.type] = await this.getAll(m.type);
+    const anyMeasure = BODY_MEASURES.some(m => measures[m.type].length);
+    if (!weekW.length && !weekP.length && !waists.length && !anyMeasure) return '';
     let s = '\n--- DIETA Y COMPOSICIÓN ---\n';
     if (weekW.length) {
       const last = weekW[weekW.length - 1];
@@ -2135,6 +2275,10 @@ App.diet = {
     }
     if (weekP.length) s += `  Proteína media última semana: ${Math.round(weekP[weekP.length - 1].avg)} g/día\n`;
     if (waists.length) { const l = waists[waists.length - 1]; s += `  Cintura: ${l.value} cm (${l.date})\n`; }
+    for (const m of BODY_MEASURES) {
+      const arr = measures[m.type];
+      if (arr.length) { const l = arr[arr.length - 1]; s += `  ${m.name}: ${l.value} cm (${l.date})${arr.length >= 2 ? ` · antes ${arr[arr.length - 2].value}` : ''}\n`; }
+    }
     const curNote = notes.find(n => n.date === getWeekStartStr());
     if (curNote?.value) s += `  Nota de la semana: ${curNote.value}\n`;
     return s;
@@ -2810,7 +2954,9 @@ App.claude = {
     const detail = recent.length >= 8 ? recent : workouts.slice(-8);
     summary += `--- ENTRENOS DE LAS ÚLTIMAS 5 SEMANAS (${detail.length}) ---\n`;
     detail.forEach(w => {
-      summary += `\n[${w.date}] ${modeTag(w.mode)}${w.routineName}\n`;
+      const r = w.readiness;
+      const rtag = r ? ` {energía ${r.energy || '?'}/5${r.sleep ? ', ' + r.sleep + 'h sueño' : ''}${r.badDay ? ', DÍA MALO' : ''}}` : '';
+      summary += `\n[${w.date}] ${modeTag(w.mode)}${w.routineName}${rtag}\n`;
       if (w.mode === 'cardio') {
         const c = w.cardio || {};
         summary += `  ${[c.distance ? c.distance + ' km' : '', c.duration ? c.duration + ' min' : '', c.maxRpm ? c.maxRpm + ' rpm máx' : ''].filter(Boolean).join(', ')}\n`;
@@ -3489,6 +3635,23 @@ async function runMigrations() {
     await DB.putAll('exercises', DEFAULT_EXERCISES); // upsert: añade KB nuevos + descripciones
     await DB.putAll('routines', KB_ROUTINES);        // reescribe kb_a/kb_b/kb_c según el PDF
     await DB.put('settings', {key:'schemaVersion', value:4});
+  }
+  if (ver < 5) {
+    // Categoría "Calves" separada de "Legs": gemelos y sóleo dejan de inflar el volumen de pierna.
+    const isCalf = (id, name) => {
+      const n = (name || '').toLowerCase();
+      return id === 'gemelos_prensa' || id === 'soleo' || n.includes('gemelo') || n.includes('soleo');
+    };
+    const exs = await DB.getAll('exercises');
+    for (const e of exs) { if (e.category === 'Legs' && isCalf(e.id, e.name)) { e.category = 'Calves'; await DB.put('exercises', e); } }
+    // Reetiqueta también el historial para que el volumen pasado se reparta bien
+    const wks = await DB.getAll('workouts');
+    for (const w of wks) {
+      let changed = false;
+      (w.exercises || []).forEach(ex => { if (ex.category === 'Legs' && isCalf(ex.exerciseId, ex.name)) { ex.category = 'Calves'; changed = true; } });
+      if (changed) await DB.put('workouts', w);
+    }
+    await DB.put('settings', {key:'schemaVersion', value:5});
   }
 }
 
