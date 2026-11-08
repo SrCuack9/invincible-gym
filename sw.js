@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invincible-gym-v18';
+const CACHE_NAME = 'invincible-gym-v19';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -6,9 +6,12 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
+// Solo borra versiones viejas de SU caché. Las otras apps de srcuack9.github.io (App Hobbies…)
+// comparten el almacenamiento de cachés del dominio: si se borraran las suyas, se quedarían
+// sin copia para abrir sin conexión hasta volver a cargarse con red.
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    Promise.all(keys.filter(k => k.startsWith('invincible-gym-') && k !== CACHE_NAME).map(k => caches.delete(k)))
   ));
   self.clients.claim();
 });
