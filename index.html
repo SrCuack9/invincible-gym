@@ -328,12 +328,16 @@ body{display:flex;flex-direction:column}
 
     <div class="card">
       <div class="card-title">Tu entrenador (Claude)</div>
-      <p class="text-sm mb-12" style="color:var(--text2)">La <b>primera vez</b> (o al reiniciar el entrenador): descarga el volcado completo y <b>adjúntalo</b> como archivo en un chat nuevo, junto al prompt del entrenador.</p>
-      <button class="btn btn-primary mb-8" onclick="App.claude.downloadFullExport()">Descargar TODO (.txt) para el entrenador</button>
-      <button class="btn btn-secondary mb-8" onclick="App.claude.generateFullExport()">…o copiarlo al portapapeles</button>
-      <p class="text-sm mb-8 mt-8" style="color:var(--text2)">Para el <b>seguimiento semanal</b>, una vez ya te conoce:</p>
-      <button class="btn btn-secondary mb-8" onclick="App.claude.generateSummary()">Copiar resumen semanal</button>
-      <button class="btn btn-secondary" onclick="App.claude.showImport()">Importar cambios del entrenador</button>
+      <p class="text-sm mb-8" style="color:var(--text2)">Copia el resumen del periodo que necesites y pégaselo al entrenador:</p>
+      <div class="other-grid" style="margin-bottom:8px">
+        <button class="btn btn-primary" onclick="App.claude.generateSummary('week')">Resumen semana</button>
+        <button class="btn btn-primary" onclick="App.claude.generateSummary('month')">Resumen mes</button>
+        <button class="btn btn-primary" onclick="App.claude.generateSummary('quarter')">Resumen trimestre</button>
+        <button class="btn btn-secondary" onclick="App.claude.showImport()">Importar cambios</button>
+      </div>
+      <p class="text-sm mb-8 mt-8" style="color:var(--text2)"><b>Reiniciar entrenador</b> (chat nuevo desde cero): descarga el volcado completo con todo tu historial y adjúntalo junto al prompt.</p>
+      <button class="btn btn-secondary mb-8" onclick="App.claude.downloadFullExport()">Descargar volcado completo (.txt)</button>
+      <button class="btn btn-secondary" onclick="App.claude.generateFullExport()">…o copiarlo al portapapeles</button>
     </div>
 
     <div class="card">
@@ -367,7 +371,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.5<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.6<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -448,9 +452,10 @@ const DEFAULT_EXERCISES = [
   {id:'press_inclinado_maq',name:'Press Inclinado Máquina Pecho/hombro',category:'Chest',isCompound:true},
   {id:'flexiones',name:'Flexiones',category:'Chest',isCompound:true},
   {id:'remo_intermedio',name:'Remo Agarre Intermedio',category:'Back',isCompound:true},
+  {id:'remo_sentado_maq',name:'Remo Sentado Máquina',category:'Back',isCompound:true},
   {id:'remo_ancho',name:'Remo Agarre Ancho',category:'Back',isCompound:true},
   {id:'remo_peq',name:'Remo Con Agarre Pequeño',category:'Back',isCompound:true},
-  {id:'remo_uni',name:'Remo Unilateral',category:'Back',isCompound:false},
+  {id:'remo_uni',name:'Remo Unilateral',category:'Back',isCompound:false,unilateral:true},
   {id:'jalon_ancho',name:'Jalón Al Pecho Agarre Ancho',category:'Back',isCompound:true},
   {id:'jalon_supino',name:'Jalón Al Pecho Supino',category:'Back',isCompound:true},
   {id:'polea_alta',name:'Polea Alta Máquina',category:'Back',isCompound:true},
@@ -470,14 +475,15 @@ const DEFAULT_EXERCISES = [
   {id:'barra_recta',name:'Barra Larga Recta',category:'Biceps',isCompound:false},
   {id:'bayesiano',name:'Bayesiano',category:'Biceps',isCompound:false},
   {id:'sentadilla',name:'Sentadilla',category:'Legs',isCompound:true},
+  {id:'sentadilla_pendulo',name:'Sentadilla Péndulo',category:'Legs',isCompound:true},
   {id:'peso_muerto',name:'Peso Muerto',category:'Legs',isCompound:true},
   {id:'prensa_tumbado',name:'Prensa Tumbado',category:'Legs',isCompound:true},
   {id:'prensa_sentado',name:'Prensa Sentado',category:'Legs',isCompound:true},
-  {id:'prensa_uni',name:'Prensa Sentado Unilateral',category:'Legs',isCompound:true},
+  {id:'prensa_uni',name:'Prensa Sentado Unilateral',category:'Legs',isCompound:true,unilateral:true},
   {id:'leg_ext',name:'Leg Extension Machine',category:'Legs',isCompound:false},
-  {id:'leg_ext_uni',name:'Leg Extensión Unilateral',category:'Legs',isCompound:false},
+  {id:'leg_ext_uni',name:'Leg Extensión Unilateral',category:'Legs',isCompound:false,unilateral:true},
   {id:'leg_curl',name:'Leg Curl',category:'Legs',isCompound:false},
-  {id:'leg_curl_uni',name:'Leg Curl Unilateral',category:'Legs',isCompound:false},
+  {id:'leg_curl_uni',name:'Leg Curl Unilateral',category:'Legs',isCompound:false,unilateral:true},
   {id:'gemelos_prensa',name:'Gemelos En Prensa Sentado',category:'Calves',isCompound:false},
   {id:'soleo',name:'Soleo',category:'Calves',isCompound:false},
   {id:'abductores',name:'Abductores',category:'Legs',isCompound:false},
@@ -1358,6 +1364,7 @@ App.workout = {
           name: exMap[re.exerciseId]?.name || re.exerciseId,
           category: exMap[re.exerciseId]?.category || 'Chest',
           isCompound: exMap[re.exerciseId]?.isCompound || false,
+          unilateral: exMap[re.exerciseId]?.unilateral || false,
           desc: exMap[re.exerciseId]?.desc || '',
           targetSets: re.sets,
           targetRepsMin: re.repsMin,
@@ -1672,7 +1679,7 @@ App.workout = {
     const e = await DB.get('exercises', id);
     if (!e) return;
     this.active.exercises.push({
-      exerciseId: e.id, name: e.name, category: e.category, isCompound: e.isCompound, desc: e.desc || '',
+      exerciseId: e.id, name: e.name, category: e.category, isCompound: e.isCompound, unilateral: e.unilateral || false, desc: e.desc || '',
       targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, targetWeight: 0,
       comment: '',
       sets: [{weight: 0, reps: 8, done: false}, {weight: 0, reps: 8, done: false}, {weight: 0, reps: 8, done: false}]
@@ -1836,10 +1843,32 @@ const BODY_MEASURES = [
   {type:'m_thigh', name:'Muslo'},
   {type:'m_calf', name:'Gemelo'},
 ];
-const DEFAULT_PROTEIN_FOODS = [
-  {name:'Batido', g:25}, {name:'Atún lata', g:12.6}, {name:'Huevo', g:6},
-  {name:'Pollo 100g', g:31}, {name:'Yogur griego', g:10}, {name:'Pavo loncha', g:5},
-  {name:'Requesón 100g', g:12}, {name:'Lentejas plato', g:18},
+// Alimentos con raciones tipo: p=proteína, c=hidratos, f=grasa (gramos por ración).
+// Las kcal se calculan solas (p*4 + c*4 + f*9). Editables desde la app.
+const DEFAULT_FOODS = [
+  {name:'Batido', p:24, c:3, f:2},
+  {name:'Café con leche', p:7, c:10, f:6},
+  {name:'Mollete', p:7, c:42, f:3},
+  {name:'Frutos secos (puñado)', p:6, c:6, f:17},
+  {name:'Fruta (pieza)', p:1, c:25, f:0},
+  {name:'Arroz (plato)', p:5, c:55, f:1},
+  {name:'Pasta (plato)', p:9, c:60, f:2},
+  {name:'Pollo 100g', p:31, c:0, f:4},
+  {name:'Atún lata', p:13, c:0, f:1},
+  {name:'Huevo', p:6, c:0, f:5},
+  {name:'Yogur griego', p:10, c:5, f:4},
+  {name:'Menú comedor', p:30, c:70, f:25},
+];
+// Franjas de macros por tipo de día (rangos [min,max]). Las fija el entrenador vía import.
+const DEFAULT_BANDS = {
+  train: {kcal:[2500,2700], p:[120,135], c:[300,360], f:[60,80], veg:2},
+  rest:  {kcal:[2150,2400], p:[120,135], c:[220,280], f:[60,80], veg:2},
+};
+const MACROS = [
+  {key:'kcal', name:'Calorías', unit:'kcal', color:'#f5a623'},
+  {key:'p', name:'Proteína', unit:'g', color:'#e74c3c'},
+  {key:'c', name:'Hidratos', unit:'g', color:'#3b82f6'},
+  {key:'f', name:'Grasa', unit:'g', color:'#9b59b6'},
 ];
 
 App.diet = {
@@ -1854,26 +1883,53 @@ App.diet = {
     await DB.put('metrics', {id: `${type}_${date}`, type, date, value, unit});
   },
   proteinTarget(lastWeight) { return lastWeight ? Math.round(lastWeight * 1.9) : 130; },
-  async foods() { return (await DB.get('settings', 'proteinFoods'))?.value || DEFAULT_PROTEIN_FOODS; },
+  // Alimentos, normalizando el formato antiguo {name,g} (solo proteína) al nuevo {name,p,c,f}
+  async foods() {
+    const raw = (await DB.get('settings', 'proteinFoods'))?.value || DEFAULT_FOODS;
+    return raw.map(f => ('p' in f) ? f : {name: f.name, p: f.g || 0, c: 0, f: 0})
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  },
+  async macroBands() { return (await DB.get('settings', 'macroBands'))?.value || DEFAULT_BANDS; },
+  kcalOf(x) { return Math.round((x.p || 0) * 4 + (x.c || 0) * 4 + (x.f || 0) * 9); },
+  // ¿Hay entreno de fuerza (no cardio) registrado ese día? -> franja de entreno
+  async dayType(date) {
+    const ws = await DB.getAll('workouts');
+    const hit = ws.some(w => w.date === date && (w.mode || 'gym') !== 'cardio' && (w.exercises || []).some(e => e.sets && e.sets.some(s => s.done)));
+    return hit ? 'train' : 'rest';
+  },
 
-  // Proteína = LISTA de comidas por día. Cada item {name, g}. value = suma (compat con agregados).
+  // Comidas por día. item = {name, p, c, f}. value = suma de proteína (compat con agregados).
+  _normItem(it) {
+    if ('p' in it) return {name: it.name, p: it.p || 0, c: it.c || 0, f: it.f || 0};
+    return {name: it.name, p: it.g || 0, c: 0, f: 0}; // formato antiguo solo-proteína
+  },
   async getDayProtein(date) {
     const rec = await DB.get('metrics', 'protein_' + date);
-    if (!rec) return {items: [], value: 0};
-    // Compat: registros antiguos guardaban solo un número en value
-    const items = Array.isArray(rec.items) ? rec.items.slice() : (rec.value > 0 ? [{name: 'Registrado', g: rec.value}] : []);
-    const value = Math.round(items.reduce((a, it) => a + (it.g || 0), 0) * 10) / 10;
-    return {items, value};
+    if (!rec) return {items: [], value: 0, p: 0, c: 0, f: 0, kcal: 0};
+    let items = Array.isArray(rec.items) ? rec.items.map(it => this._normItem(it)) : (rec.value > 0 ? [{name: 'Registrado', p: rec.value, c: 0, f: 0}] : []);
+    const p = Math.round(items.reduce((a, it) => a + it.p, 0) * 10) / 10;
+    const c = Math.round(items.reduce((a, it) => a + it.c, 0) * 10) / 10;
+    const f = Math.round(items.reduce((a, it) => a + it.f, 0) * 10) / 10;
+    return {items, value: p, p, c, f, kcal: this.kcalOf({p, c, f})};
   },
   async saveDayProtein(date, items) {
     if (!items.length) { await DB.del('metrics', 'protein_' + date); return; }
-    const value = Math.round(items.reduce((a, it) => a + (it.g || 0), 0) * 10) / 10;
+    const value = Math.round(items.reduce((a, it) => a + (it.p || 0), 0) * 10) / 10;
     await DB.put('metrics', {id: 'protein_' + date, type: 'protein', date, items, value, unit: 'g'});
   },
-  async addProteinItem(date, name, g) {
+  async addProteinItem(date, name, macros) {
     const {items} = await this.getDayProtein(date);
-    items.push({name: ((name || '').trim() || 'Extra'), g: Math.round(g * 10) / 10});
+    const m = (typeof macros === 'number') ? {p: macros} : (macros || {});
+    items.push({name: ((name || '').trim() || 'Extra'), p: Math.round((m.p || 0) * 10) / 10, c: Math.round((m.c || 0) * 10) / 10, f: Math.round((m.f || 0) * 10) / 10});
     await this.saveDayProtein(date, items);
+  },
+  // Raciones de verdura del día (contador)
+  async vegOf(date) { return (await DB.get('metrics', 'veg_' + date))?.value || 0; },
+  async addVeg(delta) {
+    const v = Math.max(0, (await this.vegOf(todayStr())) + delta);
+    if (v === 0) await DB.del('metrics', 'veg_' + todayStr());
+    else await DB.put('metrics', {id: 'veg_' + todayStr(), type: 'veg', date: todayStr(), value: v});
+    this.render();
   },
   openToday() { this.openProteinDay(todayStr()); },
 
@@ -1924,16 +1980,24 @@ App.diet = {
     const protein = await this.getAll('protein');
     const weights = await this.getAll('weight');
     const waists = await this.getAll('waist');
+    const bodyfats = await this.getAll('bodyfat');
+    const lastBF = bodyfats.length ? bodyfats[bodyfats.length - 1].value : null;
     const foods = await this.foods();
     const today = todayStr();
     const lastWeight = weights.length ? weights[weights.length - 1].value : null;
-    const manual = (await DB.get('settings', 'proteinTarget'))?.value;
-    const target = manual || this.proteinTarget(lastWeight);
-    const pVal = protein.find(p => p.date === today)?.value || 0;
-    const pPct = Math.min(100, Math.round((pVal / target) * 100));
+    const dType = await this.dayType(today);
+    const bands = (await this.macroBands())[dType];
+    const dayN = await this.getDayProtein(today);
+    const veg = await this.vegOf(today);
+    const macroBar = (label, val, range, unit) => {
+      const [mn, mx] = range; const pct = Math.min(100, Math.round(val / mx * 100));
+      const inband = val >= mn && val <= mx;
+      const cls = inband ? 'bar-ok' : (val < mn ? 'bar-low' : 'bar-over');
+      return `<div class="muscle-bar"><div class="muscle-label"><span>${label}</span><span style="color:${inband ? 'var(--green)' : 'var(--gold)'}">${Math.round(val)} / ${mn}-${mx} ${unit}</span></div><div class="bar-bg"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
+    };
 
     const foodChips = foods.map((f, i) =>
-      `<button class="food-chip" onclick="App.diet.addFood(${i})">${f.name} <b>+${f.g}</b></button>`
+      `<button class="food-chip" onclick="App.diet.addFood(${i})">${f.name}</button>`
     ).join('') + `<button class="food-chip food-chip-add" onclick="App.diet.quickAddFood()">+ Nuevo</button>`;
 
     // Medidas corporales
@@ -1958,14 +2022,26 @@ App.diet = {
 
     let html = `
       <div class="card">
-        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Proteína de hoy</div><button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 10px" onclick="App.diet.setTarget()">Objetivo</button></div>
-        <div class="flex-between mb-8 mt-8"><span class="text-sm" style="color:var(--text2)">Objetivo ${target} g${manual ? ' (manual)' : lastWeight ? ' (~1,9 g/kg)' : ''}</span><span class="fw-700" style="color:${pVal >= target ? 'var(--green)' : 'var(--gold)'}">${Math.round(pVal)} / ${target} g</span></div>
-        <div class="bar-bg mb-12"><div class="bar-fill ${pVal >= target ? 'bar-ok' : 'bar-low'}" style="width:${pPct}%"></div></div>
+        <div class="flex-between"><div class="card-title" style="margin-bottom:0">Nutrición de hoy</div><span class="text-sm" style="color:var(--text2)">Día de ${dType === 'train' ? 'entreno' : 'descanso'}</span></div>
+        <div class="mt-8">
+          ${macroBar('Calorías', dayN.kcal, bands.kcal, 'kcal')}
+          ${macroBar('Proteína', dayN.p, bands.p, 'g')}
+          ${macroBar('Hidratos', dayN.c, bands.c, 'g')}
+          ${macroBar('Grasa', dayN.f, bands.f, 'g')}
+        </div>
+        <div class="flex-between mt-8" style="align-items:center">
+          <span class="text-sm">&#129382; Verdura: <b>${veg}</b> / ${bands.veg} raciones</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 12px" onclick="App.diet.addVeg(-1)">&minus;</button>
+            <button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 12px" onclick="App.diet.addVeg(1)">+</button>
+          </div>
+        </div>
+        <p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir comida (un toque)</p>
         <div class="food-chips">${foodChips}</div>
         <div style="display:flex;gap:6px;margin-top:10px">
-          <input class="input" id="proteinConcept" placeholder="concepto (ej: menú cafetería)" style="flex:2">
-          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="g" style="flex:1">
-          <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManual()">Añadir</button>
+          <input class="input" id="proteinConcept" placeholder="concepto" style="flex:2">
+          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="prot g" style="flex:1">
+          <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManual()">+P</button>
         </div>
         <div class="mt-8" style="display:flex;flex-wrap:wrap;gap:12px">
           <button class="btn-link" onclick="App.diet.openToday()">Ver / editar comidas de hoy</button>
@@ -1980,11 +2056,12 @@ App.diet = {
           <span style="font-size:30px;font-weight:800;color:var(--gold)">${wMA ? wMA.toFixed(1) : '--'}</span>
           <span class="text-sm" style="color:var(--text2)">kg · media 7 días</span>
         </div>
-        <div class="text-sm" style="color:var(--text3)">${lastWeight ? `Último: ${lastWeight} kg (${formatDate(weights[weights.length - 1].date)})` : 'Sin registros'}</div>
+        <div class="text-sm" style="color:var(--text3)">${lastWeight ? `Último: ${lastWeight} kg (${formatDate(weights[weights.length - 1].date)})` : 'Sin registros'}${lastBF ? ` · grasa ${lastBF}%` : ''}</div>
         ${weekChange}
         <div class="mt-8">${this.spark(weights, '#f5a623', 7)}</div>
         <div style="display:flex;gap:8px;margin-top:8px">
-          <input type="number" inputmode="decimal" step="0.1" class="input" id="weightInput" placeholder="kg de hoy" style="flex:1">
+          <input type="number" inputmode="decimal" step="0.1" class="input" id="weightInput" placeholder="kg de hoy" style="flex:2">
+          <input type="number" inputmode="decimal" step="0.1" class="input" id="bodyfatInput" placeholder="% grasa" style="flex:1">
           <button class="btn btn-secondary" style="width:auto" onclick="App.diet.saveWeight()">Registrar</button>
         </div>
       </div>
@@ -2030,63 +2107,65 @@ App.diet = {
     if (note && $('weekNoteInput')) $('weekNoteInput').value = note.value || '';
   },
 
-  // Chip de un toque: suma la comida de HOY (con su concepto)
+  // Chip de un toque: suma el alimento (con sus macros) al día de HOY
   async addFood(i) {
     const foods = await this.foods();
     const f = foods[i]; if (!f) return;
-    await this.addProteinItem(todayStr(), f.name, f.g);
-    toast(`${f.name} +${f.g} g`);
+    await this.addProteinItem(todayStr(), f.name, f);
+    toast(`${f.name} añadido`);
     this.render();
   },
-  // Añadir a mano en la pantalla principal (concepto + gramos)
+  // Añadir proteína suelta a mano desde la pantalla principal (concepto + g proteína)
   async addManual() {
-    const g = parseFloat($('proteinInput').value);
-    if (!g || g <= 0) { toast('Escribe los gramos'); return; }
+    const p = parseFloat($('proteinInput').value);
+    if (!p || p <= 0) { toast('Escribe los gramos de proteína'); return; }
     const name = ($('proteinConcept')?.value || '').trim();
-    await this.addProteinItem(todayStr(), name, g);
-    toast(`${name || 'Extra'} +${g} g`);
+    await this.addProteinItem(todayStr(), name, {p});
+    toast(`${name || 'Extra'} +${p} g prot`);
     this.render();
   },
 
   // Detalle de un día: lista de comidas (botón o a mano) para ver, añadir, editar o quitar
   async openProteinDay(date) {
-    const {items, value} = await this.getDayProtein(date);
+    const day = await this.getDayProtein(date);
     const foods = await this.foods();
     const isToday = date === todayStr();
     let html = `<h2>Comidas · ${isToday ? 'Hoy' : formatDate(date)}</h2>`;
-    html += `<div class="flex-between mb-12"><span class="text-sm" style="color:var(--text2)">Total del día</span><span class="fw-700" style="color:var(--gold)">${Math.round(value)} g</span></div>`;
-    if (items.length) {
-      items.forEach((it, i) => {
+    html += `<div class="text-sm mb-12" style="color:var(--gold);font-weight:700">${day.kcal} kcal · P ${Math.round(day.p)} · H ${Math.round(day.c)} · G ${Math.round(day.f)}</div>`;
+    if (day.items.length) {
+      day.items.forEach((it, i) => {
         html += `<div class="ex-list-item">
-          <span class="eli-name">${it.name}</span>
-          <span class="eli-cat">${it.g} g</span>
-          <button onclick="App.diet.editItem('${date}',${i})" title="Editar gramos">&#9998;</button>
+          <span class="eli-name">${it.name}<br><span style="font-size:11px;color:var(--text3)">P${it.p} · H${it.c} · G${it.f}</span></span>
+          <button onclick="App.diet.editItem('${date}',${i})" title="Editar">&#9998;</button>
           <button onclick="App.diet.removeItem('${date}',${i})" title="Quitar">&#10005;</button>
         </div>`;
       });
     } else {
       html += `<p class="text-sm" style="color:var(--text3)">Nada registrado este día.</p>`;
     }
-    html += `<p class="text-sm fw-700 mt-12 mb-8" style="color:var(--gold)">Añadir</p>`;
-    html += `<div class="food-chips">` + foods.map((f, i) => `<button class="food-chip" onclick="App.diet.addPresetTo('${date}',${i})">${f.name} <b>+${f.g}</b></button>`).join('') + `</div>`;
-    html += `<div style="display:flex;gap:6px;margin-top:10px">
-      <input class="input" id="dayConcept" placeholder="concepto" style="flex:2">
-      <input type="number" inputmode="numeric" class="input" id="dayG" placeholder="g" style="flex:1">
-      <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManualTo('${date}')">Añadir</button>
-    </div>`;
+    html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir de la biblioteca</p>`;
+    html += `<div class="food-chips">` + foods.map((f, i) => `<button class="food-chip" onclick="App.diet.addPresetTo('${date}',${i})">${f.name}</button>`).join('') + `</div>`;
+    html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir a mano</p>
+      <input class="input mb-8" id="dayConcept" placeholder="concepto (ej: tortilla francesa)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <input class="input" id="dayP" type="number" inputmode="decimal" placeholder="prot g">
+        <input class="input" id="dayC" type="number" inputmode="decimal" placeholder="hidr g">
+        <input class="input" id="dayF" type="number" inputmode="decimal" placeholder="grasa g">
+      </div>
+      <button class="btn btn-primary mt-8" onclick="App.diet.addManualTo('${date}')">Añadir comida</button>`;
     App.modal.open(html);
   },
   async addPresetTo(date, i) {
     const foods = await this.foods();
     const f = foods[i]; if (!f) return;
-    await this.addProteinItem(date, f.name, f.g);
+    await this.addProteinItem(date, f.name, f);
     this.openProteinDay(date); this.render();
   },
   async addManualTo(date) {
-    const g = parseFloat($('dayG').value);
-    if (!g || g <= 0) { toast('Pon los gramos'); return; }
+    const p = parseFloat($('dayP').value) || 0, c = parseFloat($('dayC').value) || 0, f = parseFloat($('dayF').value) || 0;
+    if (p <= 0 && c <= 0 && f <= 0) { toast('Pon al menos un macro'); return; }
     const name = ($('dayConcept')?.value || '').trim();
-    await this.addProteinItem(date, name, g);
+    await this.addProteinItem(date, name, {p, c, f});
     this.openProteinDay(date); this.render();
   },
   async removeItem(date, i) {
@@ -2098,9 +2177,10 @@ App.diet = {
   async editItem(date, i) {
     const {items} = await this.getDayProtein(date);
     const it = items[i]; if (!it) return;
-    const ng = parseFloat(prompt(`Gramos de "${it.name}":`, it.g));
-    if (isNaN(ng) || ng < 0) { toast('Número no válido'); return; }
-    it.g = Math.round(ng * 10) / 10;
+    const p = parseFloat(prompt(`Proteína (g) de "${it.name}":`, it.p)); if (isNaN(p)) return;
+    const c = parseFloat(prompt('Hidratos (g):', it.c)); if (isNaN(c)) return;
+    const f = parseFloat(prompt('Grasa (g):', it.f)); if (isNaN(f)) return;
+    it.p = Math.max(0, p); it.c = Math.max(0, c); it.f = Math.max(0, f);
     await this.saveDayProtein(date, items);
     this.openProteinDay(date); this.render();
   },
@@ -2114,11 +2194,13 @@ App.diet = {
     </div>`;
     if (protein.length) {
       html += '<p class="text-sm fw-700 mb-8" style="color:var(--gold)">Días con registro</p>';
-      protein.slice().reverse().forEach(p => {
-        html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.diet.openProteinDay('${p.date}')">
-          <span class="eli-name">${formatDate(p.date)}</span>
-          <span class="eli-cat">${Math.round(p.value)} g</span>
-          <button onclick="event.stopPropagation();App.diet.deleteProteinDay('${p.date}')" title="Borrar día">&#10005;</button>
+      protein.slice().reverse().forEach(rec => {
+        const its = Array.isArray(rec.items) ? rec.items.map(it => this._normItem(it)) : (rec.value > 0 ? [{name: '', p: rec.value, c: 0, f: 0}] : []);
+        const kcal = this.kcalOf({p: its.reduce((a, i) => a + i.p, 0), c: its.reduce((a, i) => a + i.c, 0), f: its.reduce((a, i) => a + i.f, 0)});
+        html += `<div class="ex-list-item" style="cursor:pointer" onclick="App.diet.openProteinDay('${rec.date}')">
+          <span class="eli-name">${formatDate(rec.date)}</span>
+          <span class="eli-cat">${kcal} kcal · P${Math.round(rec.value)}</span>
+          <button onclick="event.stopPropagation();App.diet.deleteProteinDay('${rec.date}')" title="Borrar día">&#10005;</button>
         </div>`;
       });
     }
@@ -2135,52 +2217,60 @@ App.diet = {
     this.editProteinDays();
     this.render();
   },
-  // Guardar un alimento nuevo como preset (chip) y sumarlo hoy de un toque
+  async _saveFoods(list) { await DB.put('settings', {key: 'proteinFoods', value: list}); },
+  // Guardar un alimento nuevo en la biblioteca (con macros) y sumarlo hoy de un toque
   async quickAddFood() {
     const name = (prompt('Nombre del alimento (ej: Salmón 100g):') || '').trim();
     if (!name) return;
-    const g = parseFloat(prompt(`Gramos de proteína de "${name}":`, ''));
-    if (!g || g <= 0) { toast('Gramos no válidos'); return; }
+    const p = parseFloat(prompt('Proteína (g):', '0')) || 0;
+    const c = parseFloat(prompt('Hidratos (g):', '0')) || 0;
+    const f = parseFloat(prompt('Grasa (g):', '0')) || 0;
+    if (p <= 0 && c <= 0 && f <= 0) { toast('Pon al menos un macro'); return; }
     const foods = await this.foods();
-    foods.push({name, g});
-    await DB.put('settings', {key: 'proteinFoods', value: foods});
-    await this.addProteinItem(todayStr(), name, g);
-    toast(`${name} guardado y +${g} g`);
+    foods.push({name, p, c, f});
+    await this._saveFoods(foods);
+    await this.addProteinItem(todayStr(), name, {p, c, f});
+    toast(`${name} guardado y añadido`);
     this.render();
   },
   async manageFoods() {
-    const foods = await this.foods();
-    let html = '<h2>Alimentos frecuentes</h2><p class="text-sm mb-12" style="color:var(--text2)">Toca la ✕ para quitar. Añade los tuyos abajo.</p>';
+    const foods = await this.foods(); // ya vienen en orden alfabético
+    let html = '<h2>Mis alimentos</h2><p class="text-sm mb-12" style="color:var(--text2)">P proteína · H hidratos · G grasa (g por ración). Toca ✕ para quitar.</p>';
     foods.forEach((f, i) => {
-      html += `<div class="ex-list-item"><span class="eli-name">${f.name}</span><span class="eli-cat">${f.g} g</span><button onclick="App.diet.removeFood(${i})">&#10005;</button></div>`;
+      html += `<div class="ex-list-item"><span class="eli-name">${f.name}</span><span class="eli-cat">P${f.p} H${f.c} G${f.f}</span><button onclick="App.diet.removeFood(${i})">&#10005;</button></div>`;
     });
-    html += `<div style="display:flex;gap:6px;margin-top:12px">
-      <input class="input" id="newFoodName" placeholder="Nombre" style="flex:2">
-      <input class="input" id="newFoodG" type="number" inputmode="decimal" placeholder="g" style="flex:1">
-    </div>
-    <button class="btn btn-primary mt-8" onclick="App.diet.addNewFood()">Añadir alimento</button>`;
+    html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Nuevo alimento</p>
+      <input class="input mb-8" id="newFoodName" placeholder="Nombre">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <input class="input" id="newFoodP" type="number" inputmode="decimal" placeholder="prot g">
+        <input class="input" id="newFoodC" type="number" inputmode="decimal" placeholder="hidr g">
+        <input class="input" id="newFoodF" type="number" inputmode="decimal" placeholder="grasa g">
+      </div>
+      <button class="btn btn-primary mt-8" onclick="App.diet.addNewFood()">Añadir alimento</button>`;
     App.modal.open(html);
   },
   async addNewFood() {
     const name = $('newFoodName').value.trim();
-    const g = parseFloat($('newFoodG').value);
-    if (!name || !g || g <= 0) { toast('Pon nombre y gramos'); return; }
+    const p = parseFloat($('newFoodP').value) || 0, c = parseFloat($('newFoodC').value) || 0, f = parseFloat($('newFoodF').value) || 0;
+    if (!name || (p <= 0 && c <= 0 && f <= 0)) { toast('Pon nombre y al menos un macro'); return; }
     const foods = await this.foods();
-    foods.push({name, g});
-    await DB.put('settings', {key: 'proteinFoods', value: foods});
+    foods.push({name, p, c, f});
+    await this._saveFoods(foods);
     this.manageFoods();
   },
   async removeFood(i) {
     const foods = await this.foods();
     foods.splice(i, 1);
-    await DB.put('settings', {key: 'proteinFoods', value: foods});
+    await this._saveFoods(foods);
     this.manageFoods();
   },
   async saveWeight() {
     const v = parseFloat($('weightInput').value);
-    if (!v || v <= 0) { toast('Escribe tu peso'); return; }
-    await this.setValue('weight', v, 'kg');
-    toast('Peso registrado');
+    const bf = parseFloat($('bodyfatInput') ? $('bodyfatInput').value : '');
+    if ((!v || v <= 0) && (!bf || bf <= 0)) { toast('Escribe tu peso o % de grasa'); return; }
+    if (v && v > 0) await this.setValue('weight', v, 'kg');
+    if (bf && bf > 0) await this.setValue('bodyfat', bf, '%');
+    toast('Registrado');
     this.render();
   },
   async saveWaist() {
@@ -2232,6 +2322,21 @@ App.diet = {
   },
 
   // Bloques para el entrenador
+  // Medias por semana de kcal/proteína/hidratos/grasa a partir de las comidas
+  async macroWeekly() {
+    const recs = await this.getAll('protein');
+    const byWeek = {};
+    recs.forEach(rec => {
+      const its = Array.isArray(rec.items) ? rec.items.map(it => this._normItem(it)) : (rec.value > 0 ? [{p: rec.value, c: 0, f: 0}] : []);
+      const p = its.reduce((a, i) => a + i.p, 0), c = its.reduce((a, i) => a + i.c, 0), f = its.reduce((a, i) => a + i.f, 0);
+      const w = weekStartOf(rec.date);
+      (byWeek[w] = byWeek[w] || []).push({p, c, f, kcal: this.kcalOf({p, c, f})});
+    });
+    return Object.keys(byWeek).sort().map(w => {
+      const a = byWeek[w], n = a.length, avg = k => Math.round(a.reduce((s, x) => s + x[k], 0) / n);
+      return {week: w, n, kcal: avg('kcal'), p: avg('p'), c: avg('c'), f: avg('f')};
+    });
+  },
   async fullBlock() {
     const weekP = this.weekly(await this.getAll('protein'));
     const weekW = this.weekly(await this.getAll('weight'));
@@ -2247,7 +2352,10 @@ App.diet = {
       let prev = null;
       weekW.forEach(w => { const chg = prev !== null ? ` (${(w.avg - prev) >= 0 ? '+' : ''}${((w.avg - prev) * 1000).toFixed(0)} g/sem)` : ''; s += `  ${w.week}: ${w.avg.toFixed(1)}${chg}\n`; prev = w.avg; });
     }
-    if (weekP.length) { s += 'Proteína media por semana (g/día):\n'; weekP.forEach(w => { s += `  ${w.week}: ${Math.round(w.avg)} (${w.n} días con registro)\n`; }); }
+    const mw = await this.macroWeekly();
+    if (mw.length) { s += 'Macros medios por día y semana (kcal · P · H · G, días con registro):\n'; mw.forEach(w => { s += `  ${w.week}: ${w.kcal} kcal · P${w.p} · H${w.c} · G${w.f} (${w.n}d)\n`; }); }
+    const bf = await this.getAll('bodyfat');
+    if (bf.length) s += 'Grasa corporal (%): ' + bf.map(w => `${w.date}:${w.value}`).join(' · ') + '\n';
     if (waists.length) s += 'Cintura (cm): ' + waists.map(w => `${w.date}:${w.value}`).join(' · ') + '\n';
     // Medidas corporales (serie completa por medida)
     for (const m of BODY_MEASURES) {
@@ -2273,7 +2381,10 @@ App.diet = {
       if (weekW.length >= 2) { const g = (last.avg - weekW[weekW.length - 2].avg) * 1000; s += ` · cambio ${g >= 0 ? '+' : ''}${g.toFixed(0)} g/sem`; }
       s += '\n';
     }
-    if (weekP.length) s += `  Proteína media última semana: ${Math.round(weekP[weekP.length - 1].avg)} g/día\n`;
+    const mw = await this.macroWeekly();
+    if (mw.length) { const l = mw[mw.length - 1]; s += `  Macros media última semana: ${l.kcal} kcal · P${l.p} · H${l.c} · G${l.f} (${l.n}d)\n`; }
+    const bf = await this.getAll('bodyfat');
+    if (bf.length) { const l = bf[bf.length - 1]; s += `  Grasa corporal: ${l.value}% (${l.date})\n`; }
     if (waists.length) { const l = waists[waists.length - 1]; s += `  Cintura: ${l.value} cm (${l.date})\n`; }
     for (const m of BODY_MEASURES) {
       const arr = measures[m.type];
@@ -2355,7 +2466,7 @@ App.dashboard = {
 
     const totalWeekVol = weekWorkouts.reduce((sum, w) =>
       sum + w.exercises.reduce((s2, ex) =>
-        s2 + ex.sets.filter(s => s.done).reduce((s3, set) => s3 + (set.weight || 0) * (set.reps || 0), 0), 0), 0);
+        s2 + (ex.unilateral ? 2 : 1) * ex.sets.filter(s => s.done).reduce((s3, set) => s3 + (set.weight || 0) * (set.reps || 0), 0), 0), 0);
 
     $('statGrid').innerHTML = `
       <div class="stat-box"><div class="stat-value">${weekWorkouts.length}</div><div class="stat-label">Entrenos esta semana</div></div>
@@ -2386,7 +2497,7 @@ App.dashboard = {
     filtered.forEach(w => {
       w.exercises.forEach(ex => {
         const cat = ex.category || 'Chest';
-        const doneSets = ex.sets.filter(s => s.done).length;
+        const doneSets = ex.sets.filter(s => s.done).length * (ex.unilateral ? 2 : 1);
         setCounts[cat] = (setCounts[cat] || 0) + doneSets;
       });
     });
@@ -2930,7 +3041,9 @@ App.routines = {
 // CLAUDE INTEGRATION
 // ============================================================
 App.claude = {
-  async generateSummary() {
+  async generateSummary(period) {
+    const periods = {week: {days: 16, label: 'ÚLTIMAS 2 SEMANAS'}, month: {days: 40, label: 'ÚLTIMO MES'}, quarter: {days: 100, label: 'ÚLTIMO TRIMESTRE'}};
+    const P = periods[period] || periods.month;
     const workouts = await DB.getAll('workouts');
     const routines = await DB.getAll('routines');
     const exercises = await DB.getAll('exercises');
@@ -2946,13 +3059,12 @@ App.claude = {
 
     const modeTag = m => m === 'kettlebell' ? '[KB] ' : m === 'calistenia' ? '[CALI] ' : m === 'cardio' ? '[CARDIO] ' : '';
 
-    // Entrenos por FECHA (últimas 5 semanas), no por número fijo: así cubre el mes
-    // aunque le pases el resumen al final. Mínimo los últimos 8 por si entrenaste poco.
-    const cut = new Date(); cut.setDate(cut.getDate() - 35);
+    // Entrenos por FECHA según el periodo elegido; mínimo los últimos 8 por si entrenaste poco.
+    const cut = new Date(); cut.setDate(cut.getDate() - P.days);
     const cutStr = cut.toISOString().split('T')[0];
     const recent = workouts.filter(w => w.date >= cutStr);
     const detail = recent.length >= 8 ? recent : workouts.slice(-8);
-    summary += `--- ENTRENOS DE LAS ÚLTIMAS 5 SEMANAS (${detail.length}) ---\n`;
+    summary += `--- ENTRENOS DEL ${P.label} (${detail.length}) ---\n`;
     detail.forEach(w => {
       const r = w.readiness;
       const rtag = r ? ` {energía ${r.energy || '?'}/5${r.sleep ? ', ' + r.sleep + 'h sueño' : ''}${r.badDay ? ', DÍA MALO' : ''}}` : '';
@@ -3246,6 +3358,11 @@ App.claude = {
         customVolumeTargets = data.volumeTargets;
         await DB.put('settings', {key: 'volumeTargets', value: data.volumeTargets});
         changes.push('volumen');
+      }
+
+      if (data.macroBands) {
+        await DB.put('settings', {key: 'macroBands', value: data.macroBands});
+        changes.push('franjas de dieta');
       }
 
       toast(changes.length > 0 ? `Actualizado: ${changes.join(' + ')}!` : 'No se encontraron cambios');
@@ -3652,6 +3769,23 @@ async function runMigrations() {
       if (changed) await DB.put('workouts', w);
     }
     await DB.put('settings', {key:'schemaVersion', value:5});
+  }
+  if (ver < 6) {
+    // Ejercicios nuevos + marca "unilateral" (para doblar volumen/tonelaje)
+    const uniIds = new Set(['remo_uni', 'prensa_uni', 'leg_ext_uni', 'leg_curl_uni']);
+    const existing = await DB.getAll('exercises');
+    const ids = new Set(existing.map(e => e.id));
+    const toAdd = DEFAULT_EXERCISES.filter(e => !ids.has(e.id)); // remo_sentado_maq, sentadilla_pendulo
+    if (toAdd.length) await DB.putAll('exercises', toAdd);
+    for (const e of existing) { if (uniIds.has(e.id) && !e.unilateral) { e.unilateral = true; await DB.put('exercises', e); } }
+    // Marca también el historial para que el volumen/tonelaje pasado cuente doble
+    const wks = await DB.getAll('workouts');
+    for (const w of wks) {
+      let changed = false;
+      (w.exercises || []).forEach(ex => { if (uniIds.has(ex.exerciseId) && !ex.unilateral) { ex.unilateral = true; changed = true; } });
+      if (changed) await DB.put('workouts', w);
+    }
+    await DB.put('settings', {key:'schemaVersion', value:6});
   }
 }
 
