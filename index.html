@@ -371,7 +371,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.6<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.7<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -3289,7 +3289,10 @@ App.claude = {
 
     s += '\n===== IDs PARA EL JSON =====\n';
     s += 'Plantillas: upper_a, lower_a, upper_b, lower_b (gym) · kb_a, kb_b, kb_c · cali_a, cali_b\n';
-    s += 'exerciseId: usa los del glosario. Categorías volumen: Chest, Back, Shoulders, Biceps, Triceps, Legs, Abs.\n';
+    s += 'exerciseId: usa los del glosario. Categorías: Chest, Back, Shoulders, Biceps, Triceps, Legs, Calves, Abs.\n';
+    s += 'Si necesitas un ejercicio que NO está, créalo en el mismo JSON (no hace falta pedírmelo):\n';
+    s += '  "exercises":[{"id":"zancada_bulgara","name":"Zancada Búlgara","category":"Legs","isCompound":true,"unilateral":true}]\n';
+    s += '  y ya puedes usar ese id en "routines". Campos: id(opcional), name, category, isCompound, unilateral, desc(opcional).\n';
 
     return s;
   },
@@ -3325,6 +3328,31 @@ App.claude = {
       const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || raw.match(/({[\s\S]*})/);
       const data = JSON.parse(jsonMatch ? jsonMatch[1] : raw);
       let changes = [];
+
+      // El entrenador puede crear/actualizar ejercicios desde el JSON (antes que las rutinas,
+      // para que las referencias nuevas resuelvan). Formato por ejercicio:
+      // {id?, name, category, isCompound?, unilateral?, equip?, desc?}
+      if (data.exercises) {
+        let n = 0;
+        for (const e of data.exercises) {
+          if (!e || !e.name) continue;
+          let id = (e.id || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
+          if (!id) id = (e.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30);
+          if (!id) continue;
+          const existing = await DB.get('exercises', id);
+          const cat = MUSCLE_GROUPS[e.category] ? e.category : (existing?.category || 'Chest');
+          const rec = {
+            id, name: e.name, category: cat,
+            isCompound: e.isCompound !== undefined ? !!e.isCompound : (existing?.isCompound || false),
+            unilateral: e.unilateral !== undefined ? !!e.unilateral : (existing?.unilateral || false),
+          };
+          if (e.equip || existing?.equip) rec.equip = e.equip || existing.equip;
+          if (e.desc || existing?.desc) rec.desc = e.desc || existing.desc;
+          await DB.put('exercises', rec);
+          n++;
+        }
+        if (n) changes.push(`${n} ejercicio(s)`);
+      }
 
       if (data.routines) {
         for (const r of data.routines) {
