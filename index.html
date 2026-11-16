@@ -71,6 +71,7 @@ body{display:flex;flex-direction:column}
 .food-chip:active{transform:scale(.95);border-color:var(--gold)}
 .food-chip b{color:var(--gold)}
 .food-chip-add{border-style:dashed;color:var(--text2)}
+.food-chip{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
 .food-chip.sel{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700}
 .semaforo{font-size:12px;font-weight:600;padding:5px 8px;border-radius:6px;margin:2px 0 8px}
 .semaforo.sem-green{background:rgba(39,174,96,.15);color:#2ecc71}
@@ -371,7 +372,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.7<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v4.8<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -1900,7 +1901,11 @@ App.diet = {
 
   // Comidas por día. item = {name, p, c, f}. value = suma de proteína (compat con agregados).
   _normItem(it) {
-    if ('p' in it) return {name: it.name, p: it.p || 0, c: it.c || 0, f: it.f || 0};
+    if ('p' in it) {
+      const n = {name: it.name, p: it.p || 0, c: it.c || 0, f: it.f || 0};
+      if (it.base) { n.base = it.base; n.qty = it.qty; }
+      return n;
+    }
     return {name: it.name, p: it.g || 0, c: 0, f: 0}; // formato antiguo solo-proteína
   },
   async getDayProtein(date) {
@@ -1917,11 +1922,65 @@ App.diet = {
     const value = Math.round(items.reduce((a, it) => a + (it.p || 0), 0) * 10) / 10;
     await DB.put('metrics', {id: 'protein_' + date, type: 'protein', date, items, value, unit: 'g'});
   },
-  async addProteinItem(date, name, macros) {
+  async addProteinItem(date, name, macros, base, qty) {
     const {items} = await this.getDayProtein(date);
     const m = (typeof macros === 'number') ? {p: macros} : (macros || {});
-    items.push({name: ((name || '').trim() || 'Extra'), p: Math.round((m.p || 0) * 10) / 10, c: Math.round((m.c || 0) * 10) / 10, f: Math.round((m.f || 0) * 10) / 10});
+    const it = {name: ((name || '').trim() || 'Extra'), p: Math.round((m.p || 0) * 10) / 10, c: Math.round((m.c || 0) * 10) / 10, f: Math.round((m.f || 0) * 10) / 10};
+    if (base) { it.base = base; it.qty = qty; }
+    items.push(it);
     await this.saveDayProtein(date, items);
+  },
+
+  // Cantidad base leída del nombre: "Leche de soja 170 ml" -> 170 ml. Sin cantidad -> raciones.
+  _baseOf(food) {
+    const m = food.name.match(/(\d+(?:[.,]\d+)?)\s*(ml|gr|g)\b/i);
+    if (!m) return {name: food.name, qty: 1, unit: 'ración', p: food.p, c: food.c, f: food.f};
+    const name = food.name.replace(m[0], '').replace(/\s+/g, ' ').trim() || food.name;
+    return {name, qty: parseFloat(m[1].replace(',', '.')), unit: m[2].toLowerCase() === 'ml' ? 'ml' : 'g', p: food.p, c: food.c, f: food.f};
+  },
+  _qtyName(base, q) {
+    q = String(q).replace('.', ',');
+    if (base.unit === 'ración') return q === '1' ? base.name : `${base.name} ×${q}`;
+    return `${base.name} (${q} ${base.unit})`;
+  },
+  _scaled(base, q) {
+    const k = q / base.qty, r = x => Math.round(x * k * 10) / 10;
+    return {p: r(base.p), c: r(base.c), f: r(base.f)};
+  },
+
+  // Chips de alimentos: toque = ración guardada; mantener pulsado = elegir cantidad
+  chipsHtml(foods, date, inModal) {
+    return foods.map((f, i) => `<button class="food-chip" onpointerdown="App.diet.pressStart('${date}',${i},${inModal})" onpointerup="App.diet.pressEnd()" onpointerleave="App.diet.pressEnd()" onpointercancel="App.diet.pressEnd()" oncontextmenu="return false" onclick="App.diet.chipTap('${date}',${i},${inModal})">${f.name}</button>`).join('');
+  },
+  pressStart(date, i, inModal) {
+    this._long = false;
+    clearTimeout(this._pressT);
+    this._pressT = setTimeout(() => { this._long = true; this.addFoodQty(date, i, inModal); }, 500);
+  },
+  pressEnd() { clearTimeout(this._pressT); },
+  async chipTap(date, i, inModal) {
+    if (this._long) { this._long = false; return; }
+    const foods = await this.foods();
+    const f = foods[i]; if (!f) return;
+    const base = this._baseOf(f);
+    await this.addProteinItem(date, f.name, f, base, base.qty);
+    this._afterAdd(date, inModal, `${f.name} añadido`);
+  },
+  async addFoodQty(date, i, inModal) {
+    const foods = await this.foods();
+    const f = foods[i]; if (!f) return;
+    const base = this._baseOf(f);
+    const ask = base.unit === 'ración' ? `¿Cuántas raciones de "${f.name}"? (ej: 2 o 0,5)` : `¿Cuántos ${base.unit} de "${base.name}"? (la ración guardada es ${base.qty} ${base.unit})`;
+    const q = parseFloat((prompt(ask, base.qty) || '').replace(',', '.'));
+    if (!q || q <= 0) return;
+    const name = this._qtyName(base, q);
+    await this.addProteinItem(date, name, this._scaled(base, q), base, q);
+    this._afterAdd(date, inModal, `${name} añadido`);
+  },
+  _afterAdd(date, inModal, msg) {
+    if (inModal) this.openProteinDay(date);
+    else toast(msg);
+    this.render();
   },
   // Raciones de verdura del día (contador)
   async vegOf(date) { return (await DB.get('metrics', 'veg_' + date))?.value || 0; },
@@ -1996,9 +2055,7 @@ App.diet = {
       return `<div class="muscle-bar"><div class="muscle-label"><span>${label}</span><span style="color:${inband ? 'var(--green)' : 'var(--gold)'}">${Math.round(val)} / ${mn}-${mx} ${unit}</span></div><div class="bar-bg"><div class="bar-fill ${cls}" style="width:${pct}%"></div></div></div>`;
     };
 
-    const foodChips = foods.map((f, i) =>
-      `<button class="food-chip" onclick="App.diet.addFood(${i})">${f.name}</button>`
-    ).join('') + `<button class="food-chip food-chip-add" onclick="App.diet.quickAddFood()">+ Nuevo</button>`;
+    const foodChips = this.chipsHtml(foods, today, false) + `<button class="food-chip food-chip-add" onclick="App.diet.quickAddFood()">+ Nuevo</button>`;
 
     // Medidas corporales
     let measuresHtml = '';
@@ -2036,13 +2093,17 @@ App.diet = {
             <button class="btn btn-sm btn-secondary" style="width:auto;padding:4px 12px" onclick="App.diet.addVeg(1)">+</button>
           </div>
         </div>
-        <p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir comida (un toque)</p>
+        <p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir alimento</p>
+        <p class="text-sm mb-4" style="color:var(--text3)">Toque: la ración guardada · Mantén pulsado: eliges la cantidad</p>
         <div class="food-chips">${foodChips}</div>
-        <div style="display:flex;gap:6px;margin-top:10px">
-          <input class="input" id="proteinConcept" placeholder="concepto" style="flex:2">
-          <input type="number" inputmode="numeric" class="input" id="proteinInput" placeholder="prot g" style="flex:1">
-          <button class="btn btn-primary" style="width:auto" onclick="App.diet.addManual()">+P</button>
+        <p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Comida suelta (a mano)</p>
+        <input class="input mb-8" id="proteinConcept" placeholder="qué has comido (ej: menú del día)">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <input type="number" inputmode="decimal" class="input" id="proteinInput" placeholder="proteína g">
+          <input type="number" inputmode="decimal" class="input" id="carbInput" placeholder="hidratos g">
+          <input type="number" inputmode="decimal" class="input" id="fatInput" placeholder="grasa g">
         </div>
+        <button class="btn btn-primary mt-8" onclick="App.diet.addManual()">Añadir comida</button>
         <div class="mt-8" style="display:flex;flex-wrap:wrap;gap:12px">
           <button class="btn-link" onclick="App.diet.openToday()">Ver / editar comidas de hoy</button>
           <button class="btn-link" onclick="App.diet.editProteinDays()">Editar días anteriores</button>
@@ -2107,21 +2168,13 @@ App.diet = {
     if (note && $('weekNoteInput')) $('weekNoteInput').value = note.value || '';
   },
 
-  // Chip de un toque: suma el alimento (con sus macros) al día de HOY
-  async addFood(i) {
-    const foods = await this.foods();
-    const f = foods[i]; if (!f) return;
-    await this.addProteinItem(todayStr(), f.name, f);
-    toast(`${f.name} añadido`);
-    this.render();
-  },
-  // Añadir proteína suelta a mano desde la pantalla principal (concepto + g proteína)
+  // Comida suelta a mano desde la pantalla principal (concepto + macros)
   async addManual() {
-    const p = parseFloat($('proteinInput').value);
-    if (!p || p <= 0) { toast('Escribe los gramos de proteína'); return; }
+    const p = parseFloat($('proteinInput').value) || 0, c = parseFloat($('carbInput').value) || 0, f = parseFloat($('fatInput').value) || 0;
+    if (p <= 0 && c <= 0 && f <= 0) { toast('Pon al menos un macro'); return; }
     const name = ($('proteinConcept')?.value || '').trim();
-    await this.addProteinItem(todayStr(), name, {p});
-    toast(`${name || 'Extra'} +${p} g prot`);
+    await this.addProteinItem(todayStr(), name, {p, c, f});
+    toast(`${name || 'Extra'} añadido`);
     this.render();
   },
 
@@ -2143,8 +2196,9 @@ App.diet = {
     } else {
       html += `<p class="text-sm" style="color:var(--text3)">Nada registrado este día.</p>`;
     }
-    html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir de la biblioteca</p>`;
-    html += `<div class="food-chips">` + foods.map((f, i) => `<button class="food-chip" onclick="App.diet.addPresetTo('${date}',${i})">${f.name}</button>`).join('') + `</div>`;
+    html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir de la biblioteca</p>
+      <p class="text-sm mb-4" style="color:var(--text3)">Toque: la ración guardada · Mantén pulsado: eliges la cantidad</p>`;
+    html += `<div class="food-chips">` + this.chipsHtml(foods, date, true) + `</div>`;
     html += `<p class="text-sm fw-700 mt-12 mb-4" style="color:var(--gold)">Añadir a mano</p>
       <input class="input mb-8" id="dayConcept" placeholder="concepto (ej: tortilla francesa)">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
@@ -2154,12 +2208,6 @@ App.diet = {
       </div>
       <button class="btn btn-primary mt-8" onclick="App.diet.addManualTo('${date}')">Añadir comida</button>`;
     App.modal.open(html);
-  },
-  async addPresetTo(date, i) {
-    const foods = await this.foods();
-    const f = foods[i]; if (!f) return;
-    await this.addProteinItem(date, f.name, f);
-    this.openProteinDay(date); this.render();
   },
   async addManualTo(date) {
     const p = parseFloat($('dayP').value) || 0, c = parseFloat($('dayC').value) || 0, f = parseFloat($('dayF').value) || 0;
@@ -2177,10 +2225,46 @@ App.diet = {
   async editItem(date, i) {
     const {items} = await this.getDayProtein(date);
     const it = items[i]; if (!it) return;
-    const p = parseFloat(prompt(`Proteína (g) de "${it.name}":`, it.p)); if (isNaN(p)) return;
-    const c = parseFloat(prompt('Hidratos (g):', it.c)); if (isNaN(c)) return;
-    const f = parseFloat(prompt('Grasa (g):', it.f)); if (isNaN(f)) return;
-    it.p = Math.max(0, p); it.c = Math.max(0, c); it.f = Math.max(0, f);
+    this._ei = {date, i, base: it.base, qty: it.qty, name: it.name};
+    const q = s => String(s).replace(/"/g, '&quot;');
+    let html = `<h2>Editar comida</h2>
+      <input class="input mb-8" id="eiName" value="${q(it.name)}" placeholder="concepto">`;
+    if (it.base) {
+      html += `<p class="text-sm mb-4" style="color:var(--text2)">Cantidad (${it.base.unit === 'ración' ? 'raciones' : it.base.unit}) — al cambiarla se recalculan los macros</p>
+        <input class="input mb-8" id="eiQty" type="number" inputmode="decimal" value="${it.qty}" oninput="App.diet._eiScale()">`;
+    }
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div><div class="text-sm" style="color:var(--text3)">Proteína g</div><input class="input" id="eiP" type="number" inputmode="decimal" value="${it.p}"></div>
+        <div><div class="text-sm" style="color:var(--text3)">Hidratos g</div><input class="input" id="eiC" type="number" inputmode="decimal" value="${it.c}"></div>
+        <div><div class="text-sm" style="color:var(--text3)">Grasa g</div><input class="input" id="eiF" type="number" inputmode="decimal" value="${it.f}"></div>
+      </div>
+      <button class="btn btn-primary mt-12" onclick="App.diet.saveEditItem()">Guardar</button>
+      <button class="btn btn-secondary mt-8" onclick="App.diet.openProteinDay('${date}')">Cancelar</button>`;
+    App.modal.open(html);
+  },
+  _eiScale() {
+    const b = this._ei.base;
+    const q = parseFloat($('eiQty').value);
+    if (!b || !q || q <= 0) return;
+    const m = this._scaled(b, q);
+    $('eiP').value = m.p; $('eiC').value = m.c; $('eiF').value = m.f;
+  },
+  async saveEditItem() {
+    const {date, i, base, qty, name} = this._ei;
+    const {items} = await this.getDayProtein(date);
+    const it = items[i]; if (!it) return;
+    let newName = $('eiName').value.trim() || 'Extra';
+    if (base) {
+      const q = parseFloat($('eiQty').value);
+      if (q > 0 && q !== qty) {
+        it.qty = q;
+        if (newName === name) newName = this._qtyName(base, q);
+      }
+    }
+    it.name = newName;
+    it.p = Math.max(0, parseFloat($('eiP').value) || 0);
+    it.c = Math.max(0, parseFloat($('eiC').value) || 0);
+    it.f = Math.max(0, parseFloat($('eiF').value) || 0);
     await this.saveDayProtein(date, items);
     this.openProteinDay(date); this.render();
   },
