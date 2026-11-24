@@ -87,6 +87,8 @@ body{display:flex;flex-direction:column}
 .cal-week{margin-bottom:10px}
 .cal-day{background:var(--bg3);border:1px solid transparent;border-radius:6px;min-height:50px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
 .cal-day .cd-n{font-size:11px;color:var(--text2)}
+.cal-day.sel{border-color:var(--blue)}
+#calContent .cal-day{min-height:58px}
 .cal-day .cd-s{font-size:13px;font-weight:900}
 .cal-day.today{border-color:var(--gold)}
 .cal-day.off{background:repeating-linear-gradient(45deg,var(--bg3),var(--bg3) 4px,var(--bg) 4px,var(--bg) 8px)}
@@ -277,6 +279,7 @@ body{display:flex;flex-direction:column}
     <div class="card mt-12">
       <div class="card-title">Últimos entrenos</div>
       <div id="lastWorkoutSummary"><p class="text-sm" style="color:var(--text3)">Sin datos aún</p></div>
+      <button class="btn btn-secondary mt-12" onclick="App.nav('screenHistory')">Ver historial completo</button>
     </div>
   </div>
 
@@ -332,8 +335,15 @@ body{display:flex;flex-direction:column}
     <div id="goalsContent"></div>
   </div>
 
+  <div class="screen" id="screenCalendar">
+    <div id="calContent"></div>
+  </div>
+
   <div class="screen" id="screenHistory">
-    <h2 style="font-size:16px;font-weight:700;margin-bottom:16px">Historial</h2>
+    <div class="flex-between mb-12">
+      <h2 style="font-size:16px;font-weight:700">Historial</h2>
+      <button class="btn btn-sm btn-secondary" onclick="App.nav('screenHome')" style="width:auto">&#8592; Volver</button>
+    </div>
     <div id="historyList"></div>
   </div>
 
@@ -392,7 +402,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v5.0.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v5.1.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -405,6 +415,10 @@ body{display:flex;flex-direction:column}
     <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
     <span>Entreno</span>
   </div>
+  <div class="nav-item" data-screen="screenCalendar" onclick="App.nav('screenCalendar')">
+    <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h5v5H7z"/></svg>
+    <span>Calendario</span>
+  </div>
   <div class="nav-item" data-screen="screenDashboard" onclick="App.nav('screenDashboard')">
     <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
     <span>Dashboard</span>
@@ -412,10 +426,6 @@ body{display:flex;flex-direction:column}
   <div class="nav-item" data-screen="screenGoals" onclick="App.nav('screenGoals')">
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
     <span>Goals</span>
-  </div>
-  <div class="nav-item" data-screen="screenHistory" onclick="App.nav('screenHistory')">
-    <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-    <span>Historial</span>
   </div>
   <div class="nav-item" data-screen="screenDiet" onclick="App.nav('screenDiet')">
     <svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
@@ -1017,6 +1027,7 @@ App.nav = function(screenId) {
   if (screenId === 'screenDiet') App.diet.render();
   if (screenId === 'screenKbProgram') App.kbProgram.render();
   if (screenId === 'screenSettings') App.notif.renderSettings();
+  if (screenId === 'screenCalendar') App.cal.render();
   history.pushState({screen: screenId}, '', '');
 };
 
@@ -1332,6 +1343,11 @@ const CHECKINS = {
 const DOW = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 App.cal = {
+  month: 0,
+  sel: null,
+  mode: 'view',
+  moving: null,
+
   async load() {
     const rec = await DB.get('settings', 'schedule');
     const workouts = (await DB.getAll('workouts'))
@@ -1380,14 +1396,17 @@ App.cal = {
   // Semanas desde fromWs (lunes). Cada semana tiene tantas sesiones como días planificados.
   // Lo hecho consume sesiones; las que quedan se colocan en los días libres que faltan,
   // sin días seguidos si se puede, y llevan la siguiente plantilla de la rotación.
+  // Las que Marcos ha puesto a mano (fixed) se quedan en su día.
   weeks(ctx, fromWs, n) {
     const {sch, workouts, today} = ctx;
     const curWs = weekStartOf(today);
     const off = new Set(sch.unavailable || []);
+    const skip = new Set(sch.skipWeeks || []);
     const rolling = sch.rolling || [];
     const planned = (sch.days || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-    const lastPlanWs = planned.length ? weekStartOf(planned[planned.length - 1].date) : null;
-    const pattern = lastPlanWs ? planned.filter(x => weekStartOf(x.date) === lastPlanWs).map(x => daysBetween(lastPlanWs, x.date)) : [];
+    const firstWs = planned.length ? weekStartOf(planned[0].date) : null;
+    const lastWs = planned.length ? weekStartOf(planned[planned.length - 1].date) : null;
+    const pattern = sch.pattern || (lastWs ? planned.filter(x => weekStartOf(x.date) === lastWs).map(x => daysBetween(lastWs, x.date)) : []);
     const busy = new Set(workouts.map(w => w.date));
     let ptr = rolling.length ? rolling.indexOf(this.nextUp(ctx)) : -1;
     const endWs = addDays(fromWs, 7 * n);
@@ -1395,9 +1414,13 @@ App.cal = {
 
     for (let ws = fromWs < curWs ? fromWs : curWs; ws < endWs; ws = addDays(ws, 7)) {
       const end = addDays(ws, 6);
-      let slots = planned.filter(x => x.date >= ws && x.date <= end).map(x => ({orig: x.date, routineId: x.routineId}));
-      // Semana sin plan del entrenador: se repiten los días de la última semana planificada
-      if (!slots.length && rolling.length && lastPlanWs && ws > lastPlanWs) slots = pattern.map(dd => ({orig: addDays(ws, dd), routineId: null}));
+      let slots = planned.filter(x => x.date >= ws && x.date <= end).map(x => ({orig: x.date, routineId: x.routineId, fixed: !!x.fixed}));
+      let auto = false;
+      // Semana sin plan: se repiten los días de la última semana del entrenador
+      if (!slots.length && rolling.length && firstWs && ws > firstWs && !skip.has(ws)) {
+        slots = pattern.map(dd => ({orig: addDays(ws, dd), routineId: null, fixed: false}));
+        auto = true;
+      }
       const done = workouts.filter(w => w.date >= ws && w.date <= end);
       const k = Math.min(done.length, slots.length);
       const rest = slots.slice(k);
@@ -1407,16 +1430,17 @@ App.cal = {
         let start = ws > today ? ws : today;
         if (start === today && busy.has(today)) start = addDays(today, 1);
         let prev = [...busy].filter(d => d < start).sort().pop() || null;
-        const free = d => !off.has(d) && !busy.has(d) && !placed.some(x => x.date === d);
+        const reserved = new Set(rest.filter(x => x.fixed).map(x => x.orig));
+        const free = (d, sl) => !off.has(d) && !busy.has(d) && !placed.some(x => x.date === d) && (!reserved.has(d) || sl.orig === d);
         for (const sl of rest) {
+          let pick = sl.fixed && sl.orig >= start && free(sl.orig, sl) ? sl.orig : null;
           const target = sl.orig > start ? sl.orig : start;
-          let pick = null;
-          for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d) && (!prev || daysBetween(prev, d) >= 2)) pick = d;
-          for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d) && (!prev || d > prev)) pick = d;
+          for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d, sl) && (!prev || daysBetween(prev, d) >= 2)) pick = d;
+          for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d, sl) && (!prev || d > prev)) pick = d;
           if (pick) { placed.push({...sl, date: pick}); prev = pick; }
           else lost.push(sl);
         }
-        placed.forEach(x => {
+        placed.sort((a, b) => a.date.localeCompare(b.date)).forEach(x => {
           if (ptr < 0) return;
           x.routineId = rolling[ptr];
           ptr = (ptr + 1) % rolling.length;
@@ -1436,9 +1460,13 @@ App.cal = {
       placed.forEach(x => { if (x.date !== x.orig) mark(x.orig, 'moved'); });
       lost.forEach(sl => mark(sl.orig, 'lost'));
       const note = (sch.weekNotes || []).find(x => weekStartOf(x.weekOf) === ws) || null;
-      out.push({ws, days, note, slots: slots.length, doneCount: done.length});
+      out.push({ws, days, note, slots: slots.length, doneCount: done.length, auto, origs: slots.map(x => x.orig)});
     }
     return out;
+  },
+
+  dayInfo(ctx, date) {
+    return this.weeks(ctx, weekStartOf(date), 1)[0].days.find(x => x.date === date);
   },
 
   short(ctx, id) {
@@ -1446,7 +1474,7 @@ App.cal = {
       const m = /_([a-z0-9])$/i.exec(id);
       if (m) return m[1].toUpperCase();
     }
-    return ((ctx.routines[id] && ctx.routines[id].name) || id || '').slice(0, 3);
+    return ((ctx.routines[id] && ctx.routines[id].name) || id || '?').slice(0, 3);
   },
 
   headHtml() {
@@ -1460,15 +1488,40 @@ App.cal = {
     else if (d.marks.includes('lost')) st = `<span class="cd-s cd-lost">✕</span>`;
     else if (d.marks.includes('moved')) st = `<span class="cd-s cd-moved">→</span>`;
     const icons = d.checks.map(c => `<span style="font-size:9px;opacity:${c.done ? .35 : 1}">${CHECKINS[c.type][0]}</span>`).join('');
-    const cls = 'cal-day' + (d.date === ctx.today ? ' today' : '') + (d.off ? ' off' : '') + (dim ? ' dim' : '');
-    return `<div class="${cls}" onclick="App.cal.openDay('${d.date}')"><span class="cd-n">${+d.date.slice(8)}</span>${st}<span>${icons}</span></div>`;
+    const cls = 'cal-day' + (d.date === ctx.today ? ' today' : '') + (d.date === this.sel ? ' sel' : '') + (d.off ? ' off' : '') + (dim ? ' dim' : '');
+    return `<div class="${cls}" onclick="App.cal.tap('${d.date}')"><span class="cd-n">${+d.date.slice(8)}</span>${st}<span>${icons}</span></div>`;
   },
 
+  // Lista de ejercicios de una plantilla con la pauta que toca
+  async previewHtml(id) {
+    const routine = await DB.get('routines', id);
+    if (!routine) return '';
+    const rxMap = await App.prog.all();
+    const exMap = {};
+    (await DB.getAll('exercises')).forEach(e => exMap[e.id] = e);
+    return routine.exercises.map(re => {
+      const rx = App.prog.pick(re, routine, rxMap);
+      const kg = rx.weights && new Set(rx.weights).size > 1 ? rx.weights.map(fmtKg).join('/') + ' kg' : (rx.weight ? fmtKg(rx.weight) + ' kg' : 'corporal');
+      const cue = CUES[rx.cue] ? CUES[rx.cue][0] + ' ' : '';
+      return `<div class="flex-between" style="padding:6px 0;border-bottom:1px solid var(--bg3);gap:8px">
+        <span class="text-sm">${(exMap[re.exerciseId] && exMap[re.exerciseId].name) || re.exerciseId}${rx.superset ? ` <span style="color:var(--text3)">${rx.superset}</span>` : ''}</span>
+        <span class="text-sm" style="color:var(--text2);white-space:nowrap">${cue}${kg} · ${rx.sets}×${rx.repsMin}-${rx.repsMax}</span>
+      </div>`;
+    }).join('');
+  },
+
+  async showRoutine(id) {
+    const r = await DB.get('routines', id);
+    App.modal.open(`<h2>${r ? r.name : id}</h2>${await this.previewHtml(id)}
+      <button class="btn btn-primary" style="margin-top:12px" onclick="App.modal.forceClose();App.workout.start('${id}')">Empezar</button>`);
+  },
+
+  // Tarjeta "Hoy" en la pantalla de inicio
   async renderHome() {
     const ctx = await this.load();
     const weeks = this.weeks(ctx, weekStartOf(ctx.today), 2);
     const today = weeks[0].days.find(d => d.date === ctx.today);
-    const name = id => (ctx.routines[id] && ctx.routines[id].name) || id;
+    const name = id => (ctx.routines[id] && ctx.routines[id].name) || 'Sesión';
     const note = weeks[0].note;
 
     let html = `<div class="card">
@@ -1476,15 +1529,21 @@ App.cal = {
     if (note && note.label) html += `<div class="text-sm" style="color:var(--gold);font-weight:700;margin-top:4px">${note.label}</div>`;
     if (today.done.length) {
       html += `<p style="margin-top:10px;color:var(--green);font-weight:700">✓ ${today.done.map(w => w.routineName).join(' + ')}</p>`;
-    } else if (today.plan) {
-      html += `<p style="margin-top:10px;font-size:18px;font-weight:800">${name(today.plan.routineId)}</p>
-        <button class="btn btn-primary" style="margin-top:10px" onclick="App.workout.start('${today.plan.routineId}')">Empezar</button>`;
     } else {
-      html += `<p style="margin-top:10px;font-weight:700">${today.off ? 'No disponible' : 'Descanso'}</p>`;
-      const nxt = weeks.flatMap(w => w.days).find(d => d.date > ctx.today && d.plan);
-      if (nxt) html += `<p class="text-sm" style="color:var(--text2)">Próxima: ${name(nxt.plan.routineId)} · ${shortDate(nxt.date)}</p>`;
-      const up = this.nextUp(ctx);
-      if (up) html += `<button class="btn-link" style="margin-top:8px;padding-left:0" onclick="App.workout.start('${up}')">Entrenar hoy igualmente (${name(up)})</button>`;
+      const id = today.plan ? today.plan.routineId : this.nextUp(ctx);
+      if (today.plan) {
+        html += `<p style="margin-top:10px;font-size:18px;font-weight:800">${name(id)}</p>`;
+      } else {
+        html += `<p style="margin-top:10px;font-weight:700">${today.off ? 'No disponible' : 'Hoy descansas'}</p>`;
+        const nxt = weeks.flatMap(w => w.days).find(d => d.date > ctx.today && d.plan);
+        if (nxt) html += `<p class="text-sm" style="color:var(--text2)">Próxima: ${name(nxt.plan.routineId)} · ${shortDate(nxt.date)}</p>`;
+      }
+      if (id) {
+        html += `<div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn ${today.plan ? 'btn-primary' : 'btn-secondary'}" style="flex:2" onclick="App.workout.start('${id}')">${today.plan ? 'Empezar' : 'Entrenar hoy: ' + name(id)}</button>
+          <button class="btn btn-secondary" style="flex:1" onclick="App.cal.showRoutine('${id}')">Ver rutina</button>
+        </div>`;
+      }
     }
     today.checks.forEach(c => {
       let act = '<span style="color:var(--green)">✓</span>';
@@ -1494,64 +1553,187 @@ App.cal = {
     });
     if (note && note.note) html += `<p class="text-sm" style="margin-top:10px;color:var(--text3);font-style:italic">${note.note}</p>`;
     html += '</div>';
-
-    html += '<div class="card">';
-    weeks.forEach((wk, i) => {
-      const count = wk.slots ? (i === 0 ? `${wk.doneCount}/${wk.slots} hechas` : `${wk.slots} sesiones`) : '';
-      html += `<div class="flex-between" style="margin-bottom:4px"><span class="text-sm fw-700">${i === 0 ? 'Esta semana' : 'Siguiente'}${wk.note && wk.note.label && i > 0 ? ' · ' + wk.note.label : ''}</span><span class="text-sm" style="color:var(--text2)">${count}</span></div>`;
-      html += this.headHtml() + `<div class="cal-week">${wk.days.map(d => this.cellHtml(ctx, d)).join('')}</div>`;
-    });
-    html += `<button class="btn-link" style="padding-left:0" onclick="App.cal.openMonth(0)">Ver mes</button></div>`;
     $('planSection').innerHTML = html;
     App.notif.refresh();
   },
 
-  async openDay(date) {
+  // Pestaña Calendario: mes completo + ficha del día elegido
+  async render() {
     const ctx = await this.load();
-    const wk = this.weeks(ctx, weekStartOf(date), 1)[0];
-    const d = wk.days.find(x => x.date === date);
-    const name = id => (ctx.routines[id] && ctx.routines[id].name) || id;
-    let html = `<h2>${formatDate(date)}</h2>`;
-    if (wk.note && wk.note.label) html += `<p class="text-sm mb-8" style="color:var(--gold)">${wk.note.label}</p>`;
-    d.done.forEach(w => { html += `<div class="ex-list-item"><span class="eli-name">✓ ${w.routineName}</span><span class="eli-cat">${Math.round((w.duration || 0) / 60)} min</span></div>`; });
-    if (d.plan) html += `<div class="ex-list-item"><span class="eli-name">${name(d.plan.routineId)}</span><span class="eli-cat">${d.plan.date !== d.plan.orig ? 'movida aquí' : 'planificada'}</span></div>`;
-    if (d.marks.includes('moved') && !d.plan && !d.done.length) html += `<p class="text-sm" style="color:var(--text3)">La sesión de este día se ha movido.</p>`;
-    if (d.marks.includes('lost')) html += `<p class="text-sm" style="color:var(--red)">Sesión perdida.</p>`;
-    d.checks.forEach(c => { html += `<div class="text-sm" style="margin-top:8px">${CHECKINS[c.type][0]} ${CHECKINS[c.type][1]}${c.done ? ' ✓' : ''}</div>`; });
-    if (date >= ctx.today) html += `<button class="btn ${d.off ? 'btn-primary' : 'btn-secondary'}" style="margin-top:12px" onclick="App.cal.toggleOff('${date}')">${d.off ? 'Vuelvo a estar disponible' : 'Marcar no disponible'}</button>`;
-    if (d.plan && date === ctx.today) html += `<button class="btn btn-primary" style="margin-top:8px" onclick="App.modal.forceClose();App.workout.start('${d.plan.routineId}')">Empezar</button>`;
-    App.modal.open(html);
-  },
-
-  async toggleOff(date) {
-    const rec = await DB.get('settings', 'schedule');
-    if (!rec) return;
-    const u = new Set(rec.value.unavailable || []);
-    if (u.has(date)) u.delete(date); else u.add(date);
-    rec.value.unavailable = [...u].sort();
-    await DB.put('settings', rec);
-    App.modal.forceClose();
-    App.home.render();
-  },
-
-  async openMonth(delta) {
-    this._month = delta === 0 ? 0 : (this._month || 0) + delta;
-    const ctx = await this.load();
+    if (!this.sel) this.sel = ctx.today;
+    if (!ctx.sch) {
+      $('calContent').innerHTML = `<div class="empty-state"><div class="empty-icon">&#128197;</div><p>Importa el plan del entrenador en Ajustes → Importar cambios.</p></div>`;
+      return;
+    }
     const base = new Date();
     base.setDate(1);
-    base.setMonth(base.getMonth() + this._month);
+    base.setMonth(base.getMonth() + this.month);
     const first = ymd(base);
     const last = ymd(new Date(base.getFullYear(), base.getMonth() + 1, 0));
     const ws0 = weekStartOf(first);
     const weeks = this.weeks(ctx, ws0, Math.ceil((daysBetween(ws0, last) + 1) / 7));
-    let html = `<div class="flex-between mb-12">
-      <button class="btn btn-sm btn-secondary" onclick="App.cal.openMonth(-1)">&#8249;</button>
-      <h2 style="margin:0;text-transform:capitalize">${base.toLocaleDateString('es-ES', {month: 'long', year: 'numeric'})}</h2>
-      <button class="btn btn-sm btn-secondary" onclick="App.cal.openMonth(1)">&#8250;</button>
+
+    let h = `<div class="flex-between mb-12">
+      <button class="btn btn-sm btn-secondary" onclick="App.cal.shiftMonth(-1)">&#8249;</button>
+      <h2 style="font-size:16px;font-weight:700">${base.toLocaleDateString('es-ES', {month: 'long', year: 'numeric'}).replace(/^./, c => c.toUpperCase())}</h2>
+      <button class="btn btn-sm btn-secondary" onclick="App.cal.shiftMonth(1)">&#8250;</button>
     </div>`;
-    html += this.headHtml();
-    weeks.forEach(wk => { html += `<div class="cal-week" style="margin-bottom:4px">${wk.days.map(d => this.cellHtml(ctx, d, d.date.slice(0, 7) !== first.slice(0, 7))).join('')}</div>`; });
-    App.modal.open(html);
+    if (this.moving) {
+      h += `<div class="card" style="border-color:var(--blue);padding:10px 12px"><div class="flex-between"><span class="text-sm fw-700">Toca el día nuevo</span><button class="btn btn-sm btn-secondary" onclick="App.cal.cancelMove()">Cancelar</button></div></div>`;
+    } else {
+      h += `<div class="tabs" style="margin-bottom:10px">
+        <button class="tab ${this.mode === 'view' ? 'active' : ''}" onclick="App.cal.setMode('view')">Ver día</button>
+        <button class="tab ${this.mode === 'off' ? 'active' : ''}" onclick="App.cal.setMode('off')">Marcar fuera</button>
+      </div>`;
+    }
+    h += this.headHtml();
+    weeks.forEach(wk => { h += `<div class="cal-week" style="margin-bottom:4px">${wk.days.map(d => this.cellHtml(ctx, d, d.date.slice(0, 7) !== first.slice(0, 7))).join('')}</div>`; });
+    h += await this.dayPanel(ctx, this.sel);
+    $('calContent').innerHTML = h;
+    App.notif.refresh();
+  },
+
+  async dayPanel(ctx, date) {
+    const wk = this.weeks(ctx, weekStartOf(date), 1)[0];
+    const d = wk.days.find(x => x.date === date);
+    const name = id => (ctx.routines[id] && ctx.routines[id].name) || 'Sesión';
+    const future = date >= ctx.today;
+    let h = `<div class="card" style="margin-top:8px">
+      <div class="flex-between"><div class="card-title" style="margin-bottom:0">${shortDate(date)}</div>${d.off ? '<span class="badge" style="background:var(--bg4);color:var(--text2)">No disponible</span>' : ''}</div>`;
+    if (wk.note && wk.note.label) h += `<div class="text-sm" style="color:var(--gold);margin-top:4px">${wk.note.label}</div>`;
+    d.done.forEach(w => {
+      h += `<div class="ex-list-item" style="cursor:pointer;margin-top:8px" onclick="App.history.detail('${w.id}')"><span class="eli-name">✓ ${w.routineName}</span><span class="eli-cat">${Math.round((w.duration || 0) / 60)} min</span></div>`;
+    });
+    if (d.plan) {
+      const id = d.plan.routineId;
+      h += `<p style="margin-top:10px;font-size:17px;font-weight:800">${name(id)}</p>`;
+      if (d.plan.date !== d.plan.orig) h += `<p class="text-sm" style="color:var(--text3)">Movida aquí desde el ${shortDate(d.plan.orig)}</p>`;
+      if (future) {
+        h += `<button class="btn btn-primary" style="margin-top:10px" onclick="App.workout.start('${id}')">${date === ctx.today ? 'Empezar' : 'Hacerla hoy'}</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+            <button class="btn btn-sm btn-secondary" style="width:100%;padding:8px 4px" onclick="App.cal.startMove('${date}')">Mover</button>
+            <button class="btn btn-sm btn-secondary" style="width:100%;padding:8px 4px" onclick="App.cal.delay('${date}')">Retrasar 1 día</button>
+            <button class="btn btn-sm btn-secondary" style="width:100%;padding:8px 4px" onclick="App.cal.removeSession('${date}')">Quitar</button>
+          </div>`;
+      }
+      h += `<div style="margin-top:12px">${await this.previewHtml(id)}</div>`;
+    } else if (!d.done.length) {
+      if (d.marks.includes('moved')) h += `<p class="text-sm" style="margin-top:8px;color:var(--text3)">La sesión de este día se ha movido.</p>`;
+      if (d.marks.includes('lost')) h += `<p class="text-sm" style="margin-top:8px;color:var(--red)">Sesión perdida.</p>`;
+      if (future && !d.marks.length) h += `<p class="text-sm" style="margin-top:8px;color:var(--text2)">Sin sesión</p>`;
+      const up = date === ctx.today ? this.nextUp(ctx) : null;
+      if (up) h += `<button class="btn btn-primary" style="margin-top:10px" onclick="App.workout.start('${up}')">Entrenar hoy: ${name(up)}</button>`;
+      if (future && !d.off) h += `<button class="btn btn-sm btn-secondary" style="margin-top:8px;width:100%" onclick="App.cal.addSession('${date}')">+ Añadir sesión este día</button>`;
+    }
+    d.checks.forEach(c => { h += `<div class="text-sm" style="margin-top:8px">${CHECKINS[c.type][0]} ${CHECKINS[c.type][1]}${c.done ? ' ✓' : ''}</div>`; });
+    if (future) h += `<button class="btn btn-secondary" style="margin-top:12px" onclick="App.cal.toggleOff('${date}')">${d.off ? 'Vuelvo a estar disponible' : 'No puedo este día'}</button>`;
+    if (wk.note && wk.note.note) h += `<p class="text-sm" style="margin-top:10px;color:var(--text3);font-style:italic">${wk.note.note}</p>`;
+    return h + '</div>';
+  },
+
+  tap(date) {
+    if (this.moving) { this.doMove(this.moving, date); return; }
+    if (this.mode === 'off') { this.toggleOff(date); return; }
+    this.sel = date;
+    this.render();
+  },
+
+  setMode(m) { this.mode = m; this.render(); },
+  shiftMonth(delta) { this.month += delta; this.render(); },
+  startMove(date) { this.moving = date; this.mode = 'view'; this.render(); toast('Toca el día nuevo'); },
+  cancelMove() { this.moving = null; this.render(); },
+
+  // Antes de tocar a mano una semana que la app rellenó sola, se guardan sus días
+  async editSchedule(dates, fn) {
+    const ctx = await this.load();
+    if (!ctx.sch) ctx.sch = {rolling: [], days: [], checkins: [], weekNotes: [], unavailable: []};
+    const sch = ctx.sch;
+    sch.days = sch.days || [];
+    [...new Set(dates.map(weekStartOf))].forEach(ws => {
+      const wk = this.weeks(ctx, ws, 1)[0];
+      if (wk.auto) wk.origs.forEach(o => sch.days.push({date: o, routineId: null}));
+    });
+    const err = fn(sch, ctx);
+    if (err) { toast(err); return false; }
+    await DB.put('settings', {key: 'schedule', value: sch});
+    return true;
+  },
+
+  markEmpty(sch, ws) {
+    if (sch.days.some(x => weekStartOf(x.date) === ws)) return;
+    sch.skipWeeks = [...new Set([...(sch.skipWeeks || []), ws])];
+  },
+
+  async toggleOff(date) {
+    if (date < todayStr()) { toast('Ese día ya ha pasado'); return; }
+    await this.editSchedule([date], sch => {
+      const u = new Set(sch.unavailable || []);
+      if (u.has(date)) u.delete(date); else u.add(date);
+      sch.unavailable = [...u].sort();
+    });
+    this.render();
+  },
+
+  async doMove(from, to) {
+    this.moving = null;
+    if (to < todayStr()) { toast('Elige hoy o un día futuro'); this.render(); return; }
+    if (to !== from) {
+      const ok = await this.editSchedule([from, to], (sch, ctx) => {
+        const a = this.dayInfo(ctx, from), b = this.dayInfo(ctx, to);
+        if (!a || !a.plan) return 'No hay sesión que mover';
+        if (b.plan || b.done.length) return 'Ese día ya tiene sesión';
+        const e = sch.days.find(x => x.date === a.plan.orig);
+        if (!e) return 'No se ha podido mover';
+        e.date = to;
+        e.fixed = true;
+        sch.unavailable = (sch.unavailable || []).filter(x => x !== to);
+        sch.skipWeeks = (sch.skipWeeks || []).filter(w => w !== weekStartOf(to));
+        this.markEmpty(sch, weekStartOf(a.plan.orig));
+      });
+      if (ok) this.sel = to;
+    }
+    this.render();
+  },
+
+  // Esta sesión y las siguientes de la semana, un día más tarde
+  async delay(date) {
+    await this.editSchedule([date, addDays(date, 7)], (sch, ctx) => {
+      const wk = this.weeks(ctx, weekStartOf(date), 1)[0];
+      const later = wk.days.filter(x => x.plan && x.date >= date).reverse();
+      const moved = new Set();
+      later.forEach(x => {
+        const e = sch.days.find(y => y.date === x.plan.orig && !moved.has(y));
+        if (!e) return;
+        e.date = addDays(x.date, 1);
+        e.fixed = true;
+        moved.add(e);
+      });
+      sch.skipWeeks = (sch.skipWeeks || []).filter(w => !sch.days.some(y => weekStartOf(y.date) === w));
+    });
+    this.sel = addDays(date, 1);
+    this.render();
+  },
+
+  async removeSession(date) {
+    if (!confirm('¿Quitar esta sesión de la semana?')) return;
+    await this.editSchedule([date], (sch, ctx) => {
+      const d = this.dayInfo(ctx, date);
+      const i = d && d.plan ? sch.days.findIndex(x => x.date === d.plan.orig) : -1;
+      if (i < 0) return 'No se ha podido quitar';
+      sch.days.splice(i, 1);
+      this.markEmpty(sch, weekStartOf(d.plan.orig));
+    });
+    this.render();
+  },
+
+  async addSession(date) {
+    await this.editSchedule([date], sch => {
+      if (!(sch.rolling || []).length) return 'Importa antes el plan del entrenador';
+      sch.days.push({date, routineId: null, fixed: true});
+      sch.unavailable = (sch.unavailable || []).filter(x => x !== date);
+      sch.skipWeeks = (sch.skipWeeks || []).filter(w => w !== weekStartOf(date));
+    });
+    this.render();
   },
 };
 
@@ -4121,10 +4303,14 @@ App.claude = {
         const cur = (await DB.get('settings', 'schedule'))?.value || {rolling: [], days: [], checkins: [], weekNotes: [], unavailable: []};
         const sc = data.schedule;
         if (Array.isArray(sc.rolling)) cur.rolling = sc.rolling;
-        (sc.days || []).forEach(d => {
-          cur.days = (cur.days || []).filter(x => x.date !== d.date);
-          cur.days.push({date: d.date, routineId: d.routineId});
-        });
+        if ((sc.days || []).length) {
+          const wks = [...new Set(sc.days.map(d => weekStartOf(d.date)))].sort();
+          cur.days = (cur.days || []).filter(x => !wks.includes(weekStartOf(x.date)));
+          sc.days.forEach(d => cur.days.push({date: d.date, routineId: d.routineId}));
+          cur.skipWeeks = (cur.skipWeeks || []).filter(w => !wks.includes(w));
+          const lw = wks[wks.length - 1];
+          cur.pattern = sc.days.filter(d => weekStartOf(d.date) === lw).map(d => daysBetween(lw, d.date)).sort();
+        }
         (sc.checkins || []).forEach(c => {
           cur.checkins = cur.checkins || [];
           if (!cur.checkins.some(x => x.date === c.date && x.type === c.type)) cur.checkins.push({date: c.date, type: c.type});
