@@ -402,7 +402,7 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
 
-    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v5.1.0<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
+    <p class="text-sm text-center mt-12" style="color:var(--text3)">INVINCIBLE GYM v5.1.1<br>"It's not about how hard you hit. It's about how hard you can get hit and keep moving forward." — Rocky Balboa</p>
   </div>
 </div>
 
@@ -3999,6 +3999,7 @@ App.claude = {
       summary += `  ${e.id}: ${e.name} (${e.category})\n`;
     });
 
+    summary += await this.offBlock(cutStr);
     summary += '\n--- PARA APLICAR CAMBIOS ---\n';
     summary += 'Responde con un único bloque ```json con los campos que cambien: exercises, routines (sets, repsMin, repsMax, weight, weights, cue, superset, note), schedule (rolling, days, checkins, weekNotes), steps, goals, goalsReplace, volumeTargets, macroBands.\n';
     summary += `Plantillas activas: ${routines.filter(r => !r.archived).map(r => r.id).join(', ')}. Usa los exerciseId de la lista o crea el ejercicio en "exercises".\n`;
@@ -4104,6 +4105,7 @@ App.claude = {
     // Dieta y composición (agregados por semana + notas de contexto)
     s += await App.diet.fullBlock();
 
+    s += await this.offBlock(null);
     s += '\n===== IDs PARA EL JSON =====\n';
     s += `Plantillas activas: ${routines.filter(r => !r.archived).map(r => r.id).join(', ')} · archivadas: ${routines.filter(r => r.archived).map(r => r.id).join(', ') || 'ninguna'}\n`;
     s += 'exerciseId: usa los del glosario. Categorías: Chest, Back, Shoulders, Biceps, Triceps, Legs, Calves, Abs.\n';
@@ -4127,6 +4129,20 @@ App.claude = {
   },
 
   // Semana para el entrenador: calendario, adherencia, dieta por día, duración y progresión
+  async offBlock(from) {
+    const sch = (await DB.get('settings', 'schedule'))?.value;
+    const all = ((sch && sch.unavailable) || []).slice().sort();
+    const today = todayStr();
+    const fmt = d => `${DOW[(new Date(d + 'T12:00:00').getDay() + 6) % 7]} ${d}`;
+    const past = from ? all.filter(d => d >= from && d < today) : [];
+    const next = all.filter(d => d >= today);
+    let s = '';
+    if (past.length) s += `\nDías que marqué como no disponible en este periodo: ${past.map(fmt).join(', ')}\n`;
+    s += '\n--- DÍAS NO DISPONIBLES A FUTURO ---\n';
+    s += next.length ? `${next.map(fmt).join(', ')}\nOrganiza las sesiones de "schedule.days" sin usar estos días.\n` : 'Ninguno marcado.\n';
+    return s;
+  },
+
   async weekBlock() {
     const ctx = await App.cal.load();
     if (!ctx.sch) return '';
@@ -4148,8 +4164,6 @@ App.claude = {
       d.checks.forEach(c => parts.push(T[c.type] + (c.done ? ' hecho' : ' pendiente')));
       s += `  ${DOW[j]} ${d.date}: ${parts.join(' · ') || 'descanso'}\n`;
     });
-    const off = (ctx.sch.unavailable || []).filter(d => d > ctx.today && d <= addDays(ctx.today, 14)).sort();
-    s += `No disponible en las 2 próximas semanas: ${off.length ? off.join(', ') : 'ninguno'}\n`;
     const perWeek = n => (ctx.workouts.filter(w => w.date > addDays(ctx.today, -7 * n)).length / n).toFixed(1);
     s += `Adherencia: ${wk.doneCount}/${wk.slots} sesiones (hechas/planificadas) · media ${perWeek(4)}/sem en 4 sem · ${perWeek(8)}/sem en 8 sem\n`;
 
