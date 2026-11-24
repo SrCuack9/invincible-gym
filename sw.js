@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invincible-gym-v22';
+const CACHE_NAME = 'invincible-gym-v23';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -34,4 +34,53 @@ self.addEventListener('fetch', e => {
       })
       .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
   );
+});
+
+// AVISOS: la página deja en IndexedDB la cola de los próximos días (settings.notifQueue).
+// Cuando Android despierta la app (periodic sync), se muestran los que ya tocan.
+function openGymDB() {
+  return new Promise((res, rej) => { const r = indexedDB.open('InvincibleGym'); r.onsuccess = () => res(r.result); r.onerror = rej; });
+}
+function getSetting(db, key) {
+  return new Promise(res => {
+    const q = db.transaction('settings').objectStore('settings').get(key);
+    q.onsuccess = () => res(q.result ? q.result.value : null);
+    q.onerror = () => res(null);
+  });
+}
+function putSetting(db, key, value) {
+  return new Promise(res => {
+    const tx = db.transaction('settings', 'readwrite');
+    tx.objectStore('settings').put({key, value});
+    tx.oncomplete = res;
+    tx.onerror = res;
+  });
+}
+async function showDue() {
+  try {
+    const db = await openGymDB();
+    const queue = (await getSetting(db, 'notifQueue')) || [];
+    const shown = (await getSetting(db, 'notifShown')) || [];
+    const now = Date.now();
+    for (const n of queue) {
+      if (n.at <= now && n.at > now - 12 * 3600 * 1000 && !shown.includes(n.id)) {
+        await self.registration.showNotification(n.title, {body: n.body, tag: n.id, data: {url: n.url}});
+        shown.push(n.id);
+      }
+    }
+    await putSetting(db, 'notifShown', shown.slice(-200));
+  } catch (e) {}
+}
+self.addEventListener('periodicsync', e => {
+  if (e.tag === 'gym-reminders') e.waitUntil(showDue());
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(list => {
+    for (const c of list) {
+      if ('navigate' in c) return c.navigate(url).then(c2 => (c2 || c).focus());
+    }
+    return self.clients.openWindow(url);
+  }));
 });
