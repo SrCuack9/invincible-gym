@@ -1390,7 +1390,6 @@ App.cal = {
     const pattern = lastPlanWs ? planned.filter(x => weekStartOf(x.date) === lastPlanWs).map(x => daysBetween(lastPlanWs, x.date)) : [];
     const busy = new Set(workouts.map(w => w.date));
     let ptr = rolling.length ? rolling.indexOf(this.nextUp(ctx)) : -1;
-    let lastPlaced = null;
     const endWs = addDays(fromWs, 7 * n);
     const out = [];
 
@@ -1408,14 +1407,13 @@ App.cal = {
         let start = ws > today ? ws : today;
         if (start === today && busy.has(today)) start = addDays(today, 1);
         let prev = [...busy].filter(d => d < start).sort().pop() || null;
-        if (lastPlaced && (!prev || lastPlaced > prev)) prev = lastPlaced;
         const free = d => !off.has(d) && !busy.has(d) && !placed.some(x => x.date === d);
         for (const sl of rest) {
           const target = sl.orig > start ? sl.orig : start;
           let pick = null;
           for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d) && (!prev || daysBetween(prev, d) >= 2)) pick = d;
           for (let d = target; d <= end && !pick; d = addDays(d, 1)) if (free(d) && (!prev || d > prev)) pick = d;
-          if (pick) { placed.push({...sl, date: pick}); prev = pick; lastPlaced = pick; }
+          if (pick) { placed.push({...sl, date: pick}); prev = pick; }
           else lost.push(sl);
         }
         placed.forEach(x => {
@@ -1623,7 +1621,7 @@ App.prog = {
     }
     const sets = rx.sets || done.length;
     const total = done.reduce((a, x) => a + (x.reps || 0), 0);
-    const allMin = done.length >= sets && done.every(x => (x.reps || 0) >= rx.repsMin);
+    const allMin = done.every(x => (x.reps || 0) >= rx.repsMin);
     const metUp = total >= sets * rx.repsMax - 2;
     const low = allMin ? 0 : (prev.lowStreak || 0) + (valid ? 1 : 0);
 
